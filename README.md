@@ -14,6 +14,7 @@ Contents
   * [APIs & Version Compatibility](#stack-&-version-compatibility)
   * [Getting Started](docs/getting-started.md)
   * [Gimel Catalog Providers](docs/gimel-catalog/catalog-provider.md)
+  * [Gimel Standalone](docs/gimel-standalone/gimel-standalone.md)
   * [Contribution Guidelines](CONTRIBUTING.md)
   * [Questions](#questions)
 
