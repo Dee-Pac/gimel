@@ -20,10 +20,15 @@ export this_dir=`dirname ${this_file}`
 source $this_dir/env
 export this_script_path=`dirname $0`
 cd ${this_script_path}
-write_log "Current Directory is --> ${PWD}"
 source ${GIMEL_HOME}/build/gimel_functions
 
 write_log "Starting bootstrap for Gimel Data API"
-run_cmd "sh $GIMEL_HOME/gimel-dataapi/gimel-quickstart/bootstrap.sh "$*""
+#run_cmd "sh $GIMEL_HOME/gimel-dataapi/gimel-quickstart/bootstrap.sh "$*""
+
+sh $GIMEL_HOME/gimel-dataapi/gimel-quickstart/bootstrap.sh "$*"
+if [ $? -gt 0 ]; then
+    write_log "Encountered Error with Script | sh $GIMEL_HOME/gimel-dataapi/gimel-quickstart/bootstrap.sh "$*"
+    quickstart/start-gimel
+fi
 
 write_log "SUCCESS !!!"

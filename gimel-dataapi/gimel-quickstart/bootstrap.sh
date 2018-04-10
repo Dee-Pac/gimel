@@ -37,12 +37,12 @@ fi
 #----------------------------------- Starting hive metastore ----------------------------------------#
 
 #this sleep is required to allow time for DBs to start though the container is started.
-sleep 10s
+sleep 5s
 run_cmd "docker-compose up -d hive-metastore"
 
 #check_error $? 999 "Bootstrap Dockers - failure"
 
-sleep 10s
+sleep 5s
 
 #-------------------------------------Unzip flights data ------------------------------------------------#
 
@@ -51,11 +51,14 @@ write_log "unzipping flights data ..."
 cd $GIMEL_HOME/gimel-dataapi/gimel-quickstart/
 if [ ! -d "flights" ]; then
   run_cmd "unzip flights.zip"
+else 
+  write_log "Looks like Flights Data already exists.. Skipping Unzip !"
 fi
 
 
 #-------------------------------------Copy the flights data to Docker images-------------------------------#
 
+write_log "Attempting to Turn Off Safe Mode on Name Node..."
 run_cmd "docker exec -it namenode hadoop dfsadmin -safemode leave"
 run_cmd "docker cp flights namenode:/root"
 run_cmd "docker exec -it namenode hadoop fs -rm -r -f /flights"
@@ -70,7 +73,7 @@ run_cmd "sh ${standalone_dir}/bin/bootstrap_hbase.sh" ignore_errors
 write_log "Bootstraping Kafka topic"
 run_cmd "sh ${standalone_dir}/bin/bootstrap_kafka.sh" ignore_errors
 
-sleep 10s
+sleep 5s
 
 write_log "ALL STORAGE CONTAINERS - LAUNCHED"
 

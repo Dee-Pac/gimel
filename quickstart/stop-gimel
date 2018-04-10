@@ -20,15 +20,11 @@ export this_dir=`dirname ${this_file}`
 source $this_dir/env
 
 export this_script_path=`dirname $0`
-echo ${this_script_path}
 cd ${this_script_path}
 
 source ${GIMEL_HOME}/build/gimel_functions
 
 cd ${GIMEL_HOME}/gimel-dataapi/gimel-standalone/docker
-
 write_log "Current Directory is --> ${PWD}"
-
-run_cmd "docker-compose stop"
-
+run_cmd "docker-compose stop -t 90"
 write_log "SUCCESS !!!"
