@@ -31,4 +31,10 @@ run_cmd "docker cp $FLIGHTS_LOAD_DATA_SCRIPT hive-server:/root"
 write_log "Creating Hive external tables for CSV data..."
 run_cmd "docker exec -it hive-server bash -c "hive -f /root/flights_load_data.sql""
 
+write_log "Copying Bootstrap script to HiveServer Docker Container.."
+run_cmd "docker cp $FLIGHTS_LOAD_DATA_SCRIPT hive-server:/root"
+
+write_log "Creating the Bootstrap tables for user convenience ..."
+run_cmd "docker exec -it hive-server bash -c "hive -f /root/bootstrap_hive.sql""
+
 write_log "Completed Script --> ${full_file}"
