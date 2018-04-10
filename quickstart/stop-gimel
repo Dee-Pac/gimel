@@ -18,12 +18,17 @@
 export this_file=${0}
 export this_dir=`dirname ${this_file}`
 source $this_dir/env
+
 export this_script_path=`dirname $0`
+echo ${this_script_path}
 cd ${this_script_path}
-write_log "Current Directory is --> ${PWD}"
+
 source ${GIMEL_HOME}/build/gimel_functions
 
-write_log "Starting bootstrap for Gimel Data API"
-run_cmd "sh $GIMEL_HOME/gimel-dataapi/gimel-quickstart/bootstrap.sh "$*""
+cd ${GIMEL_HOME}/gimel-dataapi/gimel-standalone/docker
+
+write_log "Current Directory is --> ${PWD}"
+
+run_cmd "docker-compose stop"
 
 write_log "SUCCESS !!!"
