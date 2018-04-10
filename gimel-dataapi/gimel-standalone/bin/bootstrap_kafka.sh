@@ -19,13 +19,21 @@ this_script=`basename $0`
 this_dir=`dirname $0`
 full_file="${this_dir}/${this_script}"
 
-source ../../../build/gimel_functions
+source ${GIMEL_HOME}/build/gimel_functions
 
 write_log "Started Script --> ${full_file}"
 
+write_log "-----------------------------------------------------------------"
+write_log "Deleting topic if exists..."
+write_log "-----------------------------------------------------------------"
+run_cmd "docker exec -it kafka kafka-topics --delete --zookeeper zookeeper:2181 --topic gimel.demo.flights"
+run_cmd "docker exec -it kafka kafka-topics --delete --zookeeper zookeeper:2181 --topic gimel.demo.flights.json"
+
+write_log "-----------------------------------------------------------------"
 write_log "Creating Kafka topic"
-run_cmd "docker exec -it kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 3 --topic gimel.demo.flights"
-run_cmd "docker exec -it kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 3 --topic gimel.demo.flights.json"
+write_log "-----------------------------------------------------------------"
+run_cmd "docker exec -it kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 1 --topic gimel.demo.flights"
+run_cmd "docker exec -it kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 1 --topic gimel.demo.flights.json"
 run_cmd "docker exec -it kafka kafka-topics --zookeeper zookeeper:2181 --alter --topic gimel.demo.flights.json --config retention.ms=604800000"
 
 write_log "Completed Script --> ${full_file}"

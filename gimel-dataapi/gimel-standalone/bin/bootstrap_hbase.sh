@@ -23,16 +23,34 @@ source ${GIMEL_HOME}/build/gimel_functions
 
 write_log "Started Script --> ${full_file}"
 
-write_log "Creating HBase tables"
+write_log "-----------------------------------------------------------------"
+write_log "If exists, - Disable HBase tables"
+write_log "-----------------------------------------------------------------"
 
 command_for_docker="echo \"
 disable 'flights:flights_lookup_carrier_code'
 disable 'flights:flights_lookup_cancellation_code'
-disable 'flights:flights_lookup_airline_id'
+disable 'flights:flights_lookup_airline_id'\" | hbase shell"
+
+docker exec -it hbase-master bash -c "${command_for_docker}"
+
+write_log "-----------------------------------------------------------------"
+write_log "If exists, - Drop HBase tables"
+write_log "-----------------------------------------------------------------"
+
+command_for_docker="echo \"
 drop 'flights:flights_lookup_carrier_code'
 drop 'flights:flights_lookup_cancellation_code'
 drop 'flights:flights_lookup_airline_id'
-drop_namespace 'flights'
+drop_namespace 'flights'\" | hbase shell"
+
+docker exec -it hbase-master bash -c "${command_for_docker}"
+
+write_log "-----------------------------------------------------------------"
+write_log "Create HBase tables"
+write_log "-----------------------------------------------------------------"
+
+command_for_docker="echo \"
 create_namespace 'flights'
 create 'flights:flights_lookup_carrier_code','flights'
 create 'flights:flights_lookup_cancellation_code','flights'

@@ -16,15 +16,21 @@
 # limitations under the License.
 
 export this_file=${0}
-export this_dir=`dirname ${this_file}`
-source $this_dir/env
-
-export this_script_path=`dirname $0`
-cd ${this_script_path}
-
+export this_script_path=`dirname ${this_file}`
+source $this_script_path/set-env
 source ${GIMEL_HOME}/build/gimel_functions
 
 cd ${GIMEL_HOME}/gimel-dataapi/gimel-standalone/docker
 write_log "Current Directory is --> ${PWD}"
-run_cmd "docker-compose stop -t 90"
+run_cmd "docker-compose stop -t 30"
+
+write_log "clearing the HDFS local data ..."
+run_cmd "rm -rf {GIMEL_HOME}/gimel-dataapi/gimel-quickstart/__MAXOSX"
+
+write_log "clearing the flights unzipped data..."
+run_cmd "rm -rf {GIMEL_HOME}/gimel-dataapi/gimel-quickstart/flights"
+
+write_log "clearing the directories ${GIMEL_HOME}/tmp ..."
+run_cmd "rm -rf ${GIMEL_HOME}/tmp"
+
 write_log "SUCCESS !!!"

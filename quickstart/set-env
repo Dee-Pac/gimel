@@ -15,8 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-this_dir=`basename $0`
-export GIMEL_HOME=${PWD}
+if [ -z $GIMEL_HOME ]; then
+	export GIMEL_HOME=${PWD}
+fi
 export gimel_repo_home=${GIMEL_HOME}
 export standalone_dir=${gimel_repo_home}/gimel-dataapi/gimel-standalone
 export gimel_jar_name=gimel-sql-1.2.0-SNAPSHOT-uber.jar
