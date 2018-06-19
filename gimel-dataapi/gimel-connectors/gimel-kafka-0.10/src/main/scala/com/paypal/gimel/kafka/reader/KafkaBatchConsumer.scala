@@ -56,20 +56,20 @@ object KafkaBatchConsumer {
 
     val kafkaParams: Map[String, String] = conf.kafkaConsumerProps
     try {
-      var finalOffsetRangesForReader: Array[OffsetRange] = null
-      if ( conf.kafkaCustomOffsetRange.isEmpty() ) {
-        logger.info(s"""No custom offset information was given by the user""")
-        val lastCheckPoint: Option[Array[OffsetRange]] = getLastCheckPointFromZK(conf.zkHostAndPort, conf.zkCheckPoint)
-        val availableOffsetRange: Array[OffsetRange] = BrokersAndTopic(conf.kafkaHostsAndPort, conf.kafkaTopic).toKafkaOffsetsPerPartition
-        val newOffsetRangesForReader = getNewOffsetRangeForReader(lastCheckPoint, availableOffsetRange, conf.fetchRowsOnFirstRun)
-        logger.info("Offset Ranges From Difference -->")
-        newOffsetRangesForReader.foreach(x => logger.info(x.toString))
-        finalOffsetRangesForReader = newOffsetRangesForReader.applyThresholdPerPartition(conf.maxRecsPerPartition.toLong) // Restrict Offset Ranges By Applying Threshold Per Partition
-      }
-      else {
-        logger.info(s"""Custom offset information was given by the user""")
-        finalOffsetRangesForReader = getCustomOffsetRangeForReader(conf.kafkaCustomOffsetRange, conf.consumerModeBatch)
-      }
+      val finalOffsetRangesForReader: Array[OffsetRange] =
+        if (conf.kafkaCustomOffsetRange.isEmpty()) {
+          logger.info(s"""No custom offset information was given by the user""")
+          val lastCheckPoint: Option[Array[OffsetRange]] = getLastCheckPointFromZK(conf.zkHostAndPort, conf.zkCheckPoint)
+          val availableOffsetRange: Array[OffsetRange] = BrokersAndTopic(conf.kafkaHostsAndPort, conf.kafkaTopic).toKafkaOffsetsPerPartition
+          val newOffsetRangesForReader = getNewOffsetRangeForReader(lastCheckPoint, availableOffsetRange, conf.fetchRowsOnFirstRun)
+          logger.info("Offset Ranges From Difference -->")
+          newOffsetRangesForReader.foreach(x => logger.info(x.toString))
+          newOffsetRangesForReader.applyThresholdPerPartition(conf.maxRecsPerPartition.toLong) // Restrict Offset Ranges By Applying Threshold Per Partition
+        }
+        else {
+          logger.info(s"""Custom offset information was given by the user""")
+          getCustomOffsetRangeForReader(conf.kafkaCustomOffsetRange, conf.consumerModeBatch)
+        }
       logger.info("Offset Ranges After applying Threshold Per Partition/Custom Offsets -->")
       finalOffsetRangesForReader.foreach(x => logger.info(x.toString))
       val parallelizedRanges: Array[OffsetRange] = finalOffsetRangesForReader.parallelizeOffsetRanges(conf.parallelsPerPartition, conf.minRowsPerParallel)
