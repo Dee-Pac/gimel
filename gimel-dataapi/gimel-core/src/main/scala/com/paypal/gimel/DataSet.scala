@@ -293,6 +293,387 @@ class DataSet(val sparkSession: SparkSession) {
     latestDataSetWriter.map(_.write(targetName, anyRDD, propsMap)).orNull
   }
 
+  /**
+    * Calls appropriate DataSet & its create method
+    *
+    * @param sourceType Example : KAFKA | ELASTIC_SEARCH | HDFS | HBASE  |JDBC
+    * @param sourceName Example : cdh.wuser.confdba | wuser | default:wuser
+    * @param props      Additional Properties for the Reader of Dataset
+    * @return DataFrame
+    */
+  private def create(sourceType: DataSetType.SystemType
+                     , sourceName: String
+                     , props: Map[String, Any]): Boolean = {
+    latestDataSetReader = Some(getDataSet(sparkSession, sourceType))
+    latestDataSetReader.get.create(sourceName, props)
+  }
+
+  /**
+    * Identifies the catalog provider and gets the system properties and prepares DataSetProperties and
+    * call the wrapper create to decide the respective storage create to be called
+    *
+    * @param dataSet DataSet Name | DB.TABLE | Example : default.temp
+    * @param props   Additional Properties for the Reader of Dataset
+    * @return Boolean
+    */
+  def create(dataSet: String, props: Map[String, Any]): Boolean = {
+    def MethodName: String = new Exception().getStackTrace.apply(1).getMethodName
+
+    // get start time
+    val startTime = gimelTimer.start.get
+
+    try {
+
+      // Get catalog provider from run time hive context (1st Preference)
+      // if not available - check user props (2nd Preference)
+      // if not available - check Primary Provider of Catalog (Default)
+      val formattedProps: Map[String, Any] = getProps(props) ++
+        Map(CatalogProviderConfigs.CATALOG_PROVIDER ->
+          sparkSession.conf.get(CatalogProviderConfigs.CATALOG_PROVIDER,
+            CatalogProviderConstants.PRIMARY_CATALOG_PROVIDER))
+
+      sparkSession.conf.get(CatalogProviderConfigs.CATALOG_PROVIDER) match {
+        case com.paypal.gimel.common.conf.CatalogProviderConstants.HIVE_PROVIDER =>
+          throw new Exception(s"HIVE Provider is NOT currently Supported")
+        case _ => None
+      }
+
+      val datasetProps: DataSetProperties =
+        CatalogProvider.getDataSetProperties(dataSet, formattedProps)
+      val systemType = getSystemType(datasetProps)
+      val newProps: Map[String, Any] = getProps(props) ++ Map(
+        GimelConstants.DATASET_PROPS -> datasetProps
+        , GimelConstants.DATASET -> dataSet
+        , GimelConstants.RESOLVED_HIVE_TABLE -> resolveDataSetName(dataSet)
+        , GimelConstants.APP_TAG -> appTag)
+      // Why are we doing this? Elastic Search Cannot Accept "." in keys
+      val dataSetProps = datasetProps.props.map { case (k, v) =>
+        k.replaceAllLiterally(".", "~") -> v
+      }
+      val propsToLog = scala.collection.mutable.Map[String, String]()
+      dataSetProps.foreach(x => propsToLog.put(x._1, x._2))
+      additionalPropsToLog = propsToLog
+      datasetSystemType = systemType.toString
+
+      val data = this.create(systemType, dataSet, newProps)
+
+      // update log variables to push logs
+      val endTime = System.currentTimeMillis()
+      val executionTime = endTime - startTime
+
+      // post audit logs to KAFKA
+      logger.logApiAccess(sparkSession.sparkContext.getConf.getAppId
+        , sparkAppName
+        , this.getClass.getName
+        , KafkaConstants.gimelAuditRunTypeBatch
+        , clusterName
+        , user
+        , appTag.replaceAllLiterally("/", "_")
+        , MethodName
+        , dataSet
+        , datasetSystemType
+        , ""
+        , additionalPropsToLog
+        , GimelConstants.SUCCESS
+        , GimelConstants.UNKNOWN_STRING
+        , GimelConstants.UNKNOWN_STRING
+        , startTime
+        , endTime
+        , executionTime
+      )
+
+      true
+    }
+    catch {
+      case e: Throwable =>
+
+        logger.error(s"Error Description\n dataset=${dataSet}\n method=${MethodName}\n Error: ${e.printStackTrace()}")
+
+        // update log variables to push logs
+        val endTime = gimelTimer.endTime.get
+        val executionTime = gimelTimer.endWithMillSecRunTime
+
+        // post audit logs to KAFKA
+        logger.logApiAccess(sparkSession.sparkContext.getConf.getAppId
+          , sparkAppName
+          , this.getClass.getName
+          , KafkaConstants.gimelAuditRunTypeBatch
+          , clusterName
+          , user
+          , appTag.replaceAllLiterally("/", "_")
+          , MethodName
+          , dataSet
+          , datasetSystemType
+          , ""
+          , additionalPropsToLog
+          , GimelConstants.FAILURE
+          , e.toString + "\n" + e.getStackTraceString
+          , GimelConstants.UNKNOWN_STRING
+          , startTime
+          , endTime
+          , executionTime
+        )
+
+        // throw error to console
+        logger.throwError(e.toString)
+
+        val msg = s"Error in DataSet ${MethodName} Operation. Common Gimel 'Exceptions' are explained here : http://go/gimel/exceptions"
+        throw new DataSetOperationException(e.getMessage + "\n" + msg, e)
+    }
+
+  }
+
+  /**
+    * Calls appropriate DataSet & its drop method
+    *
+    * @param sourceType Example : KAFKA | ELASTIC_SEARCH | HDFS | HBASE  |JDBC
+    * @param sourceName Example : cdh.wuser.confdba | wuser | default:wuser
+    * @param props      Additional Properties for the Reader of Dataset
+    * @return DataFrame
+    */
+  private def drop(sourceType: DataSetType.SystemType
+                   , sourceName: String
+                   , props: Map[String, Any]): Boolean = {
+    latestDataSetReader = Some(getDataSet(sparkSession, sourceType))
+    latestDataSetReader.get.drop(sourceName, props)
+  }
+
+  /**
+    * Identifies the catalog provider and gets the system properties and prepares DataSetProperties and
+    * call the wrapper drop to decide the respective storage drop to be called
+    *
+    * @param dataSet DataSet Name | DB.TABLE | Example : default.temp
+    * @param props   Additional Properties for the Reader of Dataset
+    * @return Boolean
+    */
+  def drop(dataSet: String, props: Map[String, Any]): Boolean = {
+    def MethodName: String = new Exception().getStackTrace.apply(1).getMethodName
+
+    // get start time
+    val startTime = gimelTimer.start.get
+
+    try {
+
+      val formattedProps: Map[String, Any] = getProps(props) ++
+        Map(CatalogProviderConfigs.CATALOG_PROVIDER ->
+          sparkSession.conf.get(CatalogProviderConfigs.CATALOG_PROVIDER,
+            CatalogProviderConstants.PRIMARY_CATALOG_PROVIDER))
+
+      sparkSession.conf.get(CatalogProviderConfigs.CATALOG_PROVIDER) match {
+        case com.paypal.gimel.common.conf.CatalogProviderConstants.HIVE_PROVIDER =>
+          throw new Exception(s"HIVE Provider is NOT currently Supported")
+        case _ => None
+      }
+      // val resolvedSourceTable = resolveDataSetName(dataSet)
+      val datasetProps: DataSetProperties =
+      CatalogProvider.getDataSetProperties(dataSet, formattedProps)
+      val systemType = getSystemType(datasetProps)
+      val newProps: Map[String, Any] = getProps(props) ++ Map(
+        GimelConstants.DATASET_PROPS -> datasetProps
+        , GimelConstants.DATASET -> dataSet
+        , GimelConstants.RESOLVED_HIVE_TABLE -> resolveDataSetName(dataSet)
+        , GimelConstants.APP_TAG -> appTag)
+      // Why are we doing this? Elastic Search Cannot Accept "." in keys
+      val dataSetProps = datasetProps.props.map { case (k, v) =>
+        k.replaceAllLiterally(".", "~") -> v
+      }
+      val propsToLog = scala.collection.mutable.Map[String, String]()
+      dataSetProps.foreach(x => propsToLog.put(x._1, x._2))
+      additionalPropsToLog = propsToLog
+      datasetSystemType = systemType.toString
+
+      val data = this.drop(systemType, dataSet, newProps)
+
+      // update log variables to push logs
+      val endTime = System.currentTimeMillis()
+      val executionTime = endTime - startTime
+
+      // post audit logs to KAFKA
+      logger.logApiAccess(sparkSession.sparkContext.getConf.getAppId
+        , sparkAppName
+        , this.getClass.getName
+        , KafkaConstants.gimelAuditRunTypeBatch
+        , clusterName
+        , user
+        , appTag.replaceAllLiterally("/", "_")
+        , MethodName
+        , dataSet
+        , datasetSystemType
+        , ""
+        , additionalPropsToLog
+        , GimelConstants.SUCCESS
+        , GimelConstants.UNKNOWN_STRING
+        , GimelConstants.UNKNOWN_STRING
+        , startTime
+        , endTime
+        , executionTime
+      )
+
+      true
+    }
+    catch {
+      case e: Throwable =>
+
+        logger.error(s"Error Description\n dataset=${dataSet}\n method=${MethodName}\n Error: ${e.printStackTrace()}")
+
+        // update log variables to push logs
+        val endTime = gimelTimer.endTime.get
+        val executionTime = gimelTimer.endWithMillSecRunTime
+
+        // post audit logs to KAFKA
+        logger.logApiAccess(sparkSession.sparkContext.getConf.getAppId
+          , sparkAppName
+          , this.getClass.getName
+          , KafkaConstants.gimelAuditRunTypeBatch
+          , clusterName
+          , user
+          , appTag.replaceAllLiterally("/", "_")
+          , MethodName
+          , dataSet
+          , datasetSystemType
+          , ""
+          , additionalPropsToLog
+          , GimelConstants.FAILURE
+          , e.toString + "\n" + e.getStackTraceString
+          , GimelConstants.UNKNOWN_STRING
+          , startTime
+          , endTime
+          , executionTime
+        )
+
+        logger.throwError(e.toString)
+
+        val msg = s"Error in DataSet ${MethodName} Operation. Common Gimel 'Exceptions' are explained here : http://go/gimel/exceptions"
+        throw new DataSetOperationException(e.getMessage + "\n" + msg, e)
+    }
+
+  }
+
+  /**
+    * Calls appropriate DataSet & its truncate method
+    *
+    * @param sourceType Example : KAFKA | ELASTIC_SEARCH | HDFS | HBASE  |JDBC
+    * @param sourceName Example : cdh.wuser.confdba | wuser | default:wuser
+    * @param props      Additional Properties for the Reader of Dataset
+    * @return DataFrame
+    */
+  private def truncate(sourceType: DataSetType.SystemType
+                       , sourceName: String
+                       , props: Map[String, Any]): Boolean = {
+    latestDataSetReader = Some(getDataSet(sparkSession, sourceType))
+    latestDataSetReader.get.truncate(sourceName, props)
+  }
+
+  /**
+    * Identifies the catalog provider and gets the system properties and prepares DataSetProperties and
+    * call the wrapper truncate to decide the respective storage truncate to be called
+    *
+    * @param dataSet DataSet Name | DB.TABLE | Example : default.temp
+    * @param props   Additional Properties for the Reader of Dataset
+    * @return Boolean
+    */
+  def truncate(dataSet: String, props: Map[String, Any]): Boolean = {
+    def MethodName: String = new Exception().getStackTrace.apply(1).getMethodName
+
+    // get start time
+    val startTime = gimelTimer.start.get
+
+    try {
+
+      val formattedProps: Map[String, Any] = getProps(props) ++
+        Map(CatalogProviderConfigs.CATALOG_PROVIDER ->
+          sparkSession.conf.get(CatalogProviderConfigs.CATALOG_PROVIDER,
+            CatalogProviderConstants.PRIMARY_CATALOG_PROVIDER))
+      sparkSession.conf.get(CatalogProviderConfigs.CATALOG_PROVIDER) match {
+        case com.paypal.gimel.common.conf.CatalogProviderConstants.HIVE_PROVIDER =>
+          throw new Exception(s"HIVE Provider is NOT currently Supported")
+        case _ => None
+      }
+      val datasetProps: DataSetProperties =
+        CatalogProvider.getDataSetProperties(dataSet, formattedProps)
+      val systemType = getSystemType(datasetProps)
+      val newProps: Map[String, Any] = getProps(props) ++ Map(
+        GimelConstants.DATASET_PROPS -> datasetProps
+        , GimelConstants.DATASET -> dataSet
+        , GimelConstants.RESOLVED_HIVE_TABLE -> resolveDataSetName(dataSet)
+        , GimelConstants.APP_TAG -> appTag)
+      // Why are we doing this? Elastic Search Cannot Accept "." in keys
+      val dataSetProps = datasetProps.props.map { case (k, v) =>
+        k.replaceAllLiterally(".", "~") -> v
+      }
+      val propsToLog = scala.collection.mutable.Map[String, String]()
+      dataSetProps.foreach(x => propsToLog.put(x._1, x._2))
+      additionalPropsToLog = propsToLog
+      datasetSystemType = systemType.toString
+
+      val data = this.truncate(systemType, dataSet, newProps)
+
+      // update log variables to push logs
+      val endTime = System.currentTimeMillis()
+      val executionTime = endTime - startTime
+
+      // post audit logs to KAFKA
+      logger.logApiAccess(sparkSession.sparkContext.getConf.getAppId
+        , sparkAppName
+        , this.getClass.getName
+        , KafkaConstants.gimelAuditRunTypeBatch
+        , clusterName
+        , user
+        , appTag.replaceAllLiterally("/", "_")
+        , MethodName
+        , dataSet
+        , datasetSystemType
+        , ""
+        , additionalPropsToLog
+        , GimelConstants.SUCCESS
+        , GimelConstants.UNKNOWN_STRING
+        , GimelConstants.UNKNOWN_STRING
+        , startTime
+        , endTime
+        , executionTime
+      )
+
+      true
+    }
+    catch {
+      case e: Throwable =>
+
+        logger.error(s"Error Description\n dataset=${dataSet}\n method=${MethodName}\n Error: ${e.printStackTrace()}")
+
+        // update log variables to push logs
+        val endTime = gimelTimer.endTime.get
+        val executionTime = gimelTimer.endWithMillSecRunTime
+
+        // post audit logs to KAFKA
+        logger.logApiAccess(sparkSession.sparkContext.getConf.getAppId
+          , sparkAppName
+          , this.getClass.getName
+          , KafkaConstants.gimelAuditRunTypeBatch
+          , clusterName
+          , user
+          , appTag.replaceAllLiterally("/", "_")
+          , MethodName
+          , dataSet
+          , datasetSystemType
+          , ""
+          , additionalPropsToLog
+          , GimelConstants.FAILURE
+          , e.toString + "\n" + e.getStackTraceString
+          , GimelConstants.UNKNOWN_STRING
+          , startTime
+          , endTime
+          , executionTime
+        )
+
+        // throw error to console
+        logger.throwError(e.toString)
+
+        val msg = s"Error in DataSet ${MethodName} Operation. Common Gimel 'Exceptions' are explained here : http://go/gimel/exceptions"
+        throw new DataSetOperationException(e.getMessage + "\n" + msg, e)
+    }
+
+  }
+
 }
 
 /**
@@ -468,4 +849,16 @@ object DataSetUtils {
     dataSet.split('.').head.toLowerCase() != GimelConstants.PCATALOG_STRING && dataSet.split('.').length == 2
   }
 
+}
+
+/**
+  * Custom Exception for Dataset Operation initiation errors.
+  *
+  * @param message Message to Throw
+  * @param cause   A Throwable Cause
+  */
+private class DataSetOperationException(message: String, cause: Throwable)
+  extends RuntimeException(message, cause) {
+
+  def this(message: String) = this(message, null)
 }

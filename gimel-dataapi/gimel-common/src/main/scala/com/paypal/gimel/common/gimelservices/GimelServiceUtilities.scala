@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 PayPal Inc.
+ * Copyright 2019 PayPal Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -26,18 +26,18 @@ import javax.net.ssl.HttpsURLConnection
 
 import scala.collection.immutable.{Map, Seq}
 import scala.io.Source.fromInputStream
-
+import org.apache.commons.lang3.StringEscapeUtils
 import org.apache.http.client.methods.{CloseableHttpResponse, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
 import org.apache.http.impl.client.DefaultHttpClient
-import spray.json.{JsObject, JsValue, _}
+import org.apache.http.params.CoreConnectionPNames
+import spray.json._
 
 import com.paypal.gimel.common.catalog.{DataSetProperties, Field}
-import com.paypal.gimel.common.conf
 import com.paypal.gimel.common.conf.CatalogProviderConstants
 import com.paypal.gimel.common.conf.GimelConstants
 import com.paypal.gimel.common.conf.PCatalogPayloadConstants
-import com.paypal.gimel.common.gimelservices.payload.{StorageTypeAttributeKey, _}
+import com.paypal.gimel.common.gimelservices.payload._
 import com.paypal.gimel.common.gimelservices.payload.GimelJsonProtocol._
 import com.paypal.gimel.logger.Logger
 
@@ -55,10 +55,14 @@ class GimelServiceUtilities(userProps: Map[String, String] = Map[String, String]
   private val logger = Logger(this.getClass.getName)
   // Initiate Sevices Properties
   private var serviceProperties: GimelServicesProperties = GimelServicesProperties(userProps)
-  // Import the custom implementation of JSON Protocols
+  // Check for gracefully exit
+  private val exitCondition = userProps.getOrElse(GimelConstants.EXIT_CONDITION, GimelConstants.FALSE).toBoolean
+  private val userName = System.getenv(GimelConstants.USER)
+  private val hostName = System.getenv(GimelConstants.HOST_NAME)
 
   /**
     * Override the properties from user properties
+    *
     * @param props - Set of incoming properties
     */
   def customize(props: Map[String, String]): Unit = {
@@ -72,7 +76,7 @@ class GimelServiceUtilities(userProps: Map[String, String] = Map[String, String]
     * @return (ResponseBody, Https Status Code)
     */
   def httpsGet(url: String): String = {
-    logger.info(s"Get Request -> $url")
+    // logger.info(s"Get Request -> $url")
     try {
       val urlObject: URL = new URL(url)
       val conn: HttpsURLConnection = urlObject.openConnection().asInstanceOf[HttpsURLConnection]
@@ -83,6 +87,9 @@ class GimelServiceUtilities(userProps: Map[String, String] = Map[String, String]
       case e: Throwable =>
         logger.error(e.getStackTraceString)
         e.printStackTrace()
+        if (exitCondition) {
+          System.exit(1)
+        }
         throw e
     }
   }
@@ -95,7 +102,9 @@ class GimelServiceUtilities(userProps: Map[String, String] = Map[String, String]
     * @return (ResponseBody, Https Status Code)
     */
   def httpsPut(url: String, data: String = ""): (Int, String) = {
-    logger.info(s"PUT request -> $url and data -> ${data}")
+    // logger.info(s"PUT request -> $url and data -> ${data}")
+    var response = ""
+    var responseCode = 0
     try {
       val urlObject: URL = new URL(url)
       val conn: HttpsURLConnection = urlObject.openConnection().asInstanceOf[HttpsURLConnection]
@@ -108,17 +117,23 @@ class GimelServiceUtilities(userProps: Map[String, String] = Map[String, String]
       wr.close()
 
       val in: BufferedReader = new BufferedReader(new InputStreamReader(conn.getInputStream()))
-      val response = in.lines.collect(Collectors.toList[String]).toArray().mkString("")
+      response = in.lines.collect(Collectors.toList[String]).toArray().mkString("")
+      responseCode = conn.getResponseCode
       in.close()
 
-      logger.info(s"PUT response is: $response")
-      (conn.getResponseCode, response)
     } catch {
       case e: Throwable =>
         logger.error(e.getStackTraceString)
         e.printStackTrace()
-        throw e
+        if (exitCondition) {
+          System.exit(1)
+        }
+        else {
+          throw e
+        }
+
     }
+    (responseCode, response)
   }
 
   /**
@@ -128,19 +143,28 @@ class GimelServiceUtilities(userProps: Map[String, String] = Map[String, String]
     * @return Response as String
     */
   def get(url: String): String = {
-    // logger.info(s"url is --> $url")
     var response = ""
     try {
       val client = new DefaultHttpClient()
+      val httpParams = client.getParams
+      httpParams.setParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, GimelConstants.CONNECTION_TIMEOUT * 1000)
+      httpParams.setParameter(CoreConnectionPNames.SO_TIMEOUT, GimelConstants.CONNECTION_TIMEOUT * 1000)
       val requesting: HttpGet = new HttpGet(url)
+      requesting.addHeader(GimelConstants.USER_NAME, userName)
+      requesting.addHeader(GimelConstants.APP_NAME, serviceProperties.appName)
+      requesting.addHeader(GimelConstants.HOST_NAME, hostName)
       val httpResponse: CloseableHttpResponse = client.execute(requesting)
       val resStream: InputStream = httpResponse.getEntity.getContent
       response = fromInputStream(resStream).getLines().mkString("\n")
-      // logger.debug(s"Response is --> $response")
     } catch {
       case ex: Throwable =>
         ex.printStackTrace()
-        throw ex
+        if (exitCondition) {
+          System.exit(1)
+        }
+        else {
+          throw ex
+        }
     }
     response
   }
@@ -152,17 +176,29 @@ class GimelServiceUtilities(userProps: Map[String, String] = Map[String, String]
     * @return Response as Status Code
     */
   def getStatusCode(url: String): Int = {
+    var status = 0
     try {
       val client = new DefaultHttpClient()
+      val httpParams = client.getParams
+      httpParams.setParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, GimelConstants.CONNECTION_TIMEOUT * 1000)
+      httpParams.setParameter(CoreConnectionPNames.SO_TIMEOUT, GimelConstants.CONNECTION_TIMEOUT * 1000)
       val requesting: HttpGet = new HttpGet(url)
+      requesting.addHeader(GimelConstants.USER_NAME, userName)
+      requesting.addHeader(GimelConstants.APP_NAME, serviceProperties.appName)
+      requesting.addHeader(GimelConstants.HOST_NAME, hostName)
       val httpResponse: CloseableHttpResponse = client.execute(requesting)
-      val status: Int = httpResponse.getStatusLine.getStatusCode
-      status
+      status = httpResponse.getStatusLine.getStatusCode
     } catch {
       case ex: Throwable =>
         ex.printStackTrace()
-        throw ex
+        if (exitCondition) {
+          System.exit(1)
+        }
+        else {
+          throw ex
+        }
     }
+    status
   }
 
 
@@ -196,7 +232,7 @@ class GimelServiceUtilities(userProps: Map[String, String] = Map[String, String]
   /**
     * Gets the Cluster Details for a Given Cluster Name
     *
-    * @param name Name of Cluster -- Sample : cluster1
+    * @param name Name of Cluster -- Sample : horton
     * @return ClusterInfo
     */
   def getClusterInfo(name: String): ClusterInfo = {
@@ -268,6 +304,19 @@ class GimelServiceUtilities(userProps: Map[String, String] = Map[String, String]
   }
 
   /**
+    *
+    * @param storageTypeName
+    * @return
+    */
+  def getStorageSystemsByStorageType(storageTypeName: String): Seq[StorageSystem] = {
+    logger.info(s"Getting all storage systems of storageType : ${storageTypeName}")
+    val storageSystems = getStorageSystems()
+    storageSystems.filter(storageSystem => {
+      storageSystem.storageType.storageTypeName.equalsIgnoreCase(storageTypeName)
+    })
+  }
+
+  /**
     * Get all StorageSystemContainers
     *
     * @return Seq[StorageSystemContainer]
@@ -288,13 +337,32 @@ class GimelServiceUtilities(userProps: Map[String, String] = Map[String, String]
   }
 
   /**
-    * Get Storage Type Name based on storage system name (e.g. cluster1:Hive -> Hive)
+    * Get Storage Type Name based on storage system name (e.g. Horton:Hive -> Hive)
     *
     * @param storageSystemName
     * @return String
     */
   def getStorageTypeName(storageSystemName: String): String = {
     getStorageSystem(storageSystemName).get.storageType.storageTypeName
+  }
+
+  /**
+    * Get all storage types available
+    */
+  def getStorageTypes(): Seq[StorageType] = {
+    val responseObjects: Seq[JsObject] = getAsObjectList(s"${serviceProperties.urlStorageTypes}")
+    val storageTypes: Seq[StorageType] = responseObjects.map(_.convertTo[StorageType])
+    storageTypes
+  }
+
+  /**
+    * Get the storage type object based on t
+    *
+    * @param storageTypeName
+    * @return
+    */
+  def getStorageType(storageTypeName: String): Seq[StorageType] = {
+    getStorageTypes().filter(storageType => storageType.storageTypeName.equalsIgnoreCase(storageTypeName))
   }
 
   /**
@@ -321,11 +389,25 @@ class GimelServiceUtilities(userProps: Map[String, String] = Map[String, String]
     responseObject.convertTo[PagedAutoRegisterObject]
   }
 
-
+  /**
+    *
+    * @param userName
+    * @return
+    */
   def getUserByName(userName: String): User = {
     val responseObject: JsObject = getAsObject(s"${serviceProperties.urlUserByName}/$userName")
     responseObject.convertTo[User]
     // User()
+  }
+
+  /**
+    *
+    * @param zone
+    * @return
+    */
+  def getZoneByName(zone: String): Zone = {
+    val responseObject: JsObject = getAsObject(s"${serviceProperties.urlByZoneName}/${zone}")
+    responseObject.convertTo[Zone]
   }
 
   /**
@@ -421,7 +503,7 @@ class GimelServiceUtilities(userProps: Map[String, String] = Map[String, String]
       val objectSchemas: PagedAutoRegisterObject = getPagedObjectSchemasByStorageSystem(storageSystemId, page, size)
       val autoRegisterObjects = objectSchemas.content
       autoRegisterObjects.foreach(objectSchema => {
-        val containerObject = ContainerObject(objectSchema.objectId, objectSchema.containerName, objectSchema.objectName, objectSchema.storageSystemId, objectSchema.objectSchema, objectSchema.objectAttributes, objectSchema.isActiveYN, objectSchema.createdUserOnStore, objectSchema.createdTimestampOnStore)
+        val containerObject = ContainerObject(objectSchema.objectId, objectSchema.containerName, objectSchema.objectName, objectSchema.storageSystemId, objectSchema.objectSchema, objectSchema.objectAttributes, objectSchema.isActiveYN, objectSchema.createdUserOnStore, objectSchema.createdTimestampOnStore, objectSchema.isSelfDiscovered)
         containerObjects = containerObjects :+ containerObject
       })
       page = page + 1
@@ -494,6 +576,54 @@ class GimelServiceUtilities(userProps: Map[String, String] = Map[String, String]
       case Some(x) =>
         isContainerObjectExists(x.storageSystemId, containerName, objectName)
     }
+  }
+
+  /**
+    * Gets ranger policies for a given HDFS location, file type (hdfs), and cluster ID
+    *
+    * @param location  - HDFS location
+    * @param fileType  - the term hdfs to tell it is a hdfs file type
+    * @param clusterId - cluster id
+    * @return - returns the ranger policies
+    */
+
+  def getRangerPoliciesByLocation(location: String, fileType: String, clusterId: Int): Seq[PolicyDetails] = {
+    val responseObject: Seq[JsObject] = getAsObjectList(s"${serviceProperties.urlRangerPoliciesByLocation}?location=${location}&type=${fileType}&cluster=${clusterId}")
+    val rangerPolicies = responseObject.map(_.convertTo[PolicyDetails])
+    rangerPolicies
+  }
+
+
+  /**
+    * Gets ranger policies for a given hBase table, file type (hbase), and cluster ID
+    *
+    * @param table     - hBase table
+    * @param fileType  - the term hdfs to tell it is a hdfs file type
+    * @param clusterId - cluster id
+    * @return - returns the ranger policies
+    */
+
+  def getRangerPoliciesByHbaseTable(table: String, fileType: String, clusterId: Int): Seq[PolicyDetails] = {
+    val responseObject: Seq[JsObject] = getAsObjectList(s"${serviceProperties.urlRangerPoliciesByLocation}?table=${table}&type=${fileType}&cluster=${clusterId}")
+    val rangerPolicies = responseObject.map(_.convertTo[PolicyDetails])
+    rangerPolicies
+  }
+
+  /**
+    * Gets ranger policies for a given hive Database and hive table, file type (hive), and cluster ID
+    *
+    * @param database  - hive DB
+    * @param table     - hive table
+    * @param fileType  - the term hdfs to tell it is a hdfs file type
+    * @param clusterId - cluster id
+    * @return - returns the ranger policies
+    */
+
+
+  def getRangerPoliciesByHive(database: String, table: String, fileType: String, clusterId: Int): Seq[PolicyDetails] = {
+    val responseObject: Seq[JsObject] = getAsObjectList(s"${serviceProperties.urlRangerPoliciesByLocation}?database=${database}&table=${table}&type=${fileType}&cluster=${clusterId}")
+    val rangerPolicies = responseObject.map(_.convertTo[PolicyDetails])
+    rangerPolicies
   }
 
   /**
@@ -602,9 +732,25 @@ class GimelServiceUtilities(userProps: Map[String, String] = Map[String, String]
         objProps += ("gimel.hive.db.name" -> db)
         objProps += ("gimel.hive.table.name" -> table)
       }
-      case "TERADATA" => {
+      case "TERADATA" | "MYSQL" => {
         val dbTable = dataset.split('.').tail.mkString(".").split('.').tail.mkString(".")
         objProps += ("gimel.jdbc.input.table.name" -> dbTable)
+      }
+      case "ELASTIC" => {
+        val dbTable = dataset.split('.').tail.mkString(".").split('.').tail.mkString(".")
+        val Array(db, table) = dbTable.split('.')
+        objProps += ("es.resource" -> (db + "/" + table))
+        objProps += ("es.index.auto.create" -> "true")
+      }
+      case _ => {
+
+        val errorMessage =
+          s"""
+             |[The dataset ${dataset} does not exist. Please check if the dataset name is correct.
+             |It may not exist in UDC (if you've set gimel.catalog.provider=UDC)
+             |Solutions for common exceptions are documented here : http://go/gimel/exceptions"
+             |""".stripMargin
+        throw new Exception(errorMessage)
       }
     }
     objProps
@@ -680,8 +826,19 @@ class GimelServiceUtilities(userProps: Map[String, String] = Map[String, String]
       .convertTo[Seq[JsValue]]
       .map(_.asJsObject)
 
+    val customAttributes = dataSetByNameJs
+      .fields(PCatalogPayloadConstants.CUSTOM_ATTRIBUTES_KEY)
+      .toString().parseJson
+      .convertTo[Seq[JsValue]]
+      .map(_.asJsObject)
+
     val dataSetProps = objectAttributes.map { x =>
       x.fields(PCatalogPayloadConstants.SYSTEM_ATTRIBUTE_NAME).toString() ->
+        x.fields(PCatalogPayloadConstants.OBJECT_ATTRIBUTE_VALUE).toString()
+    }.toMap
+
+    val customProps = customAttributes.map { x =>
+      x.fields(PCatalogPayloadConstants.OBJECT_ATTRIBUTE_KEY).toString() ->
         x.fields(PCatalogPayloadConstants.OBJECT_ATTRIBUTE_VALUE).toString()
     }.toMap
 
@@ -690,9 +847,13 @@ class GimelServiceUtilities(userProps: Map[String, String] = Map[String, String]
     // @TODO The namespace must be populated according to the storage system type.
 
     val allProps: Map[String, String] = {
-      storageSystemProps ++ dataSetProps
+      storageSystemProps ++ dataSetProps ++ customProps
     }.map {
-      x => x._1.replace("\"", "") -> x._2.replace("\"", "")
+      x => if (x._1.contains("gimel.es.schema.mapping")) {
+        x._1.replace("\"", "") -> StringEscapeUtils.unescapeJava(x._2).stripPrefix("\"").stripSuffix("\"")
+      } else {
+        x._1.replace("\"", "") -> x._2.replace("\"", "")
+      }
     } ++ Map[String, String](
       CatalogProviderConstants.PROPS_NAMESPACE -> GimelConstants.PCATALOG_STRING,
       CatalogProviderConstants.DATASET_PROPS_DATASET -> dataset,
@@ -707,16 +868,18 @@ class GimelServiceUtilities(userProps: Map[String, String] = Map[String, String]
       .convertTo[Seq[JsValue]]
       .map(_.asJsObject)
 
-    val allFields = objectSchema.map { x =>
+    val allFields: Array[Field] = objectSchema.map { x =>
       Field(x.fields(PCatalogPayloadConstants.COLUMN_NAME).toString.replace("\"", ""),
         x.fields(PCatalogPayloadConstants.COLUMN_TYPE).toString.replace("\"", ""),
         x.fields.getOrElse(GimelConstants.NULL_STRING, "true").toString.toBoolean,
         x.fields.getOrElse(PCatalogPayloadConstants.COLUMN_PARTITION_STATUS, false).toString.toBoolean,
-        x.fields.getOrElse(PCatalogPayloadConstants.COLUMN_INDEX, "0").toString.toInt
+        x.fields.getOrElse(PCatalogPayloadConstants.COLUMN_INDEX, "0").toString.toInt,
+        x.fields(PCatalogPayloadConstants.COLUMN_CLASS).toString.replace("\"", ""),
+        x.fields.getOrElse(PCatalogPayloadConstants.COLUMN_PARTITION_STATUS, false).toString.toBoolean
       )
     }.toArray
 
-    val fields = allFields.filter(field => ! field.partitionStatus)
+    val fields: Array[Field] = allFields.filter(field => !field.partitionStatus)
     val partitionFields = allFields.filter(field => field.partitionStatus)
 
     val dataSetProperties = DataSetProperties(storageSystemType, fields, partitionFields, allProps)
@@ -732,7 +895,9 @@ class GimelServiceUtilities(userProps: Map[String, String] = Map[String, String]
     * @return (ResponseBody, Https Status Code)
     */
   def httpsPost(url: String, data: String = ""): (Int, String) = {
-    logger.info(s"Post request -> $url and data -> ${data}")
+    // logger.info(s"Post request -> $url and data -> ${data}")
+    var responseCode = 0
+    var response = ""
     try {
       val urlObject: URL = new URL(url)
       val conn: HttpsURLConnection = urlObject.openConnection().asInstanceOf[HttpsURLConnection]
@@ -745,18 +910,21 @@ class GimelServiceUtilities(userProps: Map[String, String] = Map[String, String]
       wr.close()
 
       val in: BufferedReader = new BufferedReader(new InputStreamReader(conn.getInputStream()))
-      val response = in.lines.collect(Collectors.toList[String]).toArray().mkString("")
+      response = in.lines.collect(Collectors.toList[String]).toArray().mkString("")
+      responseCode = conn.getResponseCode
       in.close()
-
-      logger.info(s"Post response is: $response")
-      (conn.getResponseCode, response)
     } catch {
       case e: Throwable =>
         logger.error(e.getStackTraceString)
         e.printStackTrace()
-        throw e
+        if (exitCondition) {
+          System.exit(1)
+        }
+        else {
+          throw e
+        }
     }
-
+    (responseCode, response)
   }
 
   /**
@@ -769,27 +937,41 @@ class GimelServiceUtilities(userProps: Map[String, String] = Map[String, String]
   def post(url: String, payload: String = ""): (Int, String) = {
 
     val client = new DefaultHttpClient()
-
+    var status: Int = 0
+    var response = ""
     try {
       val post = new HttpPost(url)
-      post.setHeader("Content-type", "application/json")
+      post.addHeader("Content-type", "application/json")
+      post.addHeader(GimelConstants.USER_NAME, userName)
+      post.addHeader(GimelConstants.APP_NAME, serviceProperties.appName)
+      post.addHeader(GimelConstants.HOST_NAME, hostName)
       post.setEntity(new StringEntity(payload))
       val httpResponse = client.execute(post)
       val resStream = httpResponse.getEntity.getContent
-      val response = fromInputStream(resStream).getLines().mkString("")
-      logger.debug(s"Post Response --> $response")
-      val status: Int = httpResponse.getStatusLine.getStatusCode
-      if (status != GimelConstants.HTTP_SUCCESS_STATUS_CODE) {
+      response = fromInputStream(resStream).getLines().mkString("")
+      status = httpResponse.getStatusLine.getStatusCode
+      if (status >= GimelConstants.HTTP_SUCCESS_RESPONSE_CODE) {
         logger.error(s"Unable to post to web service $url. Response code is $status")
+        logger.error(s"The request to UDC is -> $payload")
+        logger.error(s"The response from UDC is -> $response")
+        if (exitCondition) {
+          System.exit(1)
+        }
       } else {
         logger.info(s"Success. Response Posting --> $status")
       }
-      (status, response)
+
     } catch {
       case ex: Throwable =>
         ex.printStackTrace()
-        throw ex
+        if (exitCondition) {
+          System.exit(1)
+        }
+        else {
+          throw ex
+        }
     }
+    (status, response)
   }
 
   /**
@@ -801,26 +983,40 @@ class GimelServiceUtilities(userProps: Map[String, String] = Map[String, String]
     */
   def put(url: String, payload: String = ""): (Int, String) = {
     val client = new DefaultHttpClient()
+    var status: Int = 0
+    var response = ""
     try {
       val put = new HttpPut(url)
-      put.setHeader("Content-type", "application/json")
+      put.addHeader("Content-type", "application/json")
+      put.addHeader(GimelConstants.USER_NAME, userName)
+      put.addHeader(GimelConstants.APP_NAME, serviceProperties.appName)
+      put.addHeader(GimelConstants.HOST_NAME, hostName)
       put.setEntity(new StringEntity(payload))
       val httpResponse = client.execute(put)
       val resStream = httpResponse.getEntity.getContent
-      val response = fromInputStream(resStream).getLines().mkString("")
-      logger.debug(s"put Response --> $response")
-      val status: Int = httpResponse.getStatusLine.getStatusCode
-      if (status != 200) {
+      response = fromInputStream(resStream).getLines().mkString("")
+      status = httpResponse.getStatusLine.getStatusCode
+      if (status >= GimelConstants.HTTP_SUCCESS_RESPONSE_CODE) {
         logger.error(s"Unable to put to web service $url. Response code is $status")
+        logger.error(s"The request to UDC is -> $payload")
+        logger.error(s"The response from UDC is -> $response")
+        if (exitCondition) {
+          System.exit(1)
+        }
       } else {
         logger.info(s"Success. Response Putting--> $status")
       }
-      (status, response)
+
     } catch {
       case ex: Throwable =>
         ex.printStackTrace()
-        throw ex
+        if (exitCondition) {
+          System.exit(1)
+        } else {
+          throw ex
+        }
     }
+    (status, response)
   }
 
   /**
@@ -854,6 +1050,43 @@ class GimelServiceUtilities(userProps: Map[String, String] = Map[String, String]
 
     val url = s"${serviceProperties.urlObjectSchema}"
     post(url, objectSchema.toJson.compactPrint)
+  }
+
+  /**
+    * Posts the StorageSystemDiscovery status to UDC
+    *
+    * @param storageSystemDiscovery StorageSystemDiscovery
+    */
+  def postStoreDiscoveryStatus(storageSystemDiscovery: StorageSystemDiscovery): (Int, String) = {
+    val url = s"${serviceProperties.urlSystemDiscoveryStatus}"
+    post(url, storageSystemDiscovery.toJson.compactPrint)
+  }
+
+  /**
+    *
+    * @param storageSystem
+    */
+  def postStorageSystem(storageSystem: StorageSystemCreatePostPayLoad): (Int, String) = {
+    val url = s"${serviceProperties.urlStorageSystemPost}"
+    post(url, storageSystem.toJson.compactPrint)
+  }
+
+  /**
+    *
+    * @param storageSystem
+    * @return
+    */
+  def postAndGetStorageSystem(storageSystem: StorageSystemCreatePostPayLoad): StorageSystem = {
+    val (status, response) = postStorageSystem(storageSystem)
+    if (status <= 300) {
+      logger.info(s"Created storageSystem for ${storageSystem.storageSystemName}: ${response}")
+      val storageSystemRetrieved = getStorageSystem(storageSystem.storageSystemName)
+      storageSystemRetrieved.get
+    }
+    else {
+      println(s"Cannot create a storageSystem for ${storageSystem.storageSystemName}: ${response}")
+      throw new Exception("Cannot create a storageSystem for ${storageSystemName}: ${response}")
+    }
   }
 
   /**
@@ -908,7 +1141,7 @@ class GimelServiceUtilities(userProps: Map[String, String] = Map[String, String]
       |lazy val objectSchemaChangeLostsToDeployInACluster = serviceUtils.getChangeLogsByCluster(8)
       |
       |val success = "success"
-      |serviceUtils.postObjectSchema(ObjectSchemaInfo("tmp1","default",1,"create table....",56,"drampally"))
+      |serviceUtils.postObjectSchema(ObjectSchemaInfo("tmp1","default",1,"create table....",56,"john"))
     """.stripMargin
 
 }

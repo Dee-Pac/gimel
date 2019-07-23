@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 PayPal Inc.
+ * Copyright 2019 PayPal Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -20,6 +20,7 @@
 package com.paypal.gimel.common.storageadmin
 
 import java.io.{BufferedReader, InputStreamReader}
+import java.net.URI
 
 import org.apache.hadoop.fs.{FileSystem, FSDataInputStream, Path}
 import org.apache.hadoop.security.UserGroupInformation
@@ -94,6 +95,28 @@ object HDFSAdminClient {
   }
 
   /**
+    * hdfsFolderExists checks whether the HDFS folder exists or not.
+    *
+    * @param incomingFolder - HDFS folder name
+    * @return returns a boolean based on whether the hdfs folder exists or not
+    */
+  def hdfsFolderExists(incomingFolder: String): Boolean = {
+    def MethodName: String = new Exception().getStackTrace.apply(1).getMethodName
+
+    logger.info(s" @Begin -->  + $MethodName")
+
+    val conf = new org.apache.hadoop.conf.Configuration()
+    val fs = FileSystem.get(new URI(incomingFolder), conf)
+    val hdfsPath = new Path(incomingFolder)
+    if (fs.exists(hdfsPath)) {
+      true
+    }
+    else {
+      false
+    }
+  }
+
+  /**
     * Reads the Contents of an HDFS File
     *
     * @param path Fully Qualified Path of the File to Read
@@ -146,7 +169,7 @@ object HDFSAdminClient {
       conf.addResource(new Path(hadoop_conf_dir + "/" + "hdfs-site.xml"))
       conf.set(GimelConstants.HDFS_IMPL, GimelConstants.DISTRIBUTED_FS)
       conf.set(GimelConstants.FILE_IMPL, GimelConstants.LOCAL_FS)
-      conf.set(GimelConstants.SECURITY_AUTH, "kerberos")
+      conf.set(GimelConstants.SECURITY_AUTH, GimelConstants.DEFAULT_SECURITY_AUTH)
       UserGroupInformation.setConfiguration(conf)
       val fs = FileSystem.get(conf)
       val input: FSDataInputStream = fs.open(hdfsPath)

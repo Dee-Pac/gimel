@@ -29,6 +29,7 @@ object PCatalogUrlConfigs {
   val CLUSTER_BY_ID: String = "api.cluster.by.id"
   val API_CLUSTERS: String = "api.clusters"
   val API_OBJECT_SCHEMA: String = "api.object.schema"
+  val API_SYSTEM_DISCOVERY_STATUS: String = "api.system.discovery.status"
   val DEACTIVATE_OBJECT_SCHEMA: String = "api.object.schema.deactivate"
   val OBJECT_SCHEMA_BY_SYSTEM_ID: String = "api.object.schemas.by.storage.system.id"
   val PAGED_OBJECT_SCHEMA_BY_SYSTEM_ID: String = "api.paged.object.schemas.by.storage.system.id"
@@ -47,6 +48,10 @@ object PCatalogUrlConfigs {
   val USER_BY_NAME: String = "api.user.by.name"
   val STORAGE_SYSTEM_CONTAINERS = "api.storage.system.containers"
   val DATASET_BY_NAME: String = "api.dataset.by.name"
+  val RANGER_POLICIES_BY_LOCATION: String = "api.ranger.policies.by.location"
+  val STORAGE_TYPES = "api.storage.types"
+  val ZONE_BY_NAME = "api.zone.name"
+  val POST_STORAGE_SYSTEM = "api.post.storage.system"
 
   val REST_DRUID_PROTOCOL: String = "rest.druid.service.method"
   val REST_DRUID_HOST: String = "rest.druid.service.host"

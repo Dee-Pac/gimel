@@ -23,8 +23,7 @@ import java.util.Properties
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
-
-import com.paypal.gimel.common.conf.PCatalogUrlConfigs
+import com.paypal.gimel.common.conf.{GimelConstants, PCatalogUrlConfigs}
 import com.paypal.gimel.logger.Logger
 
 class GimelServicesProperties(userProps: Map[String, String] = Map[String, String]()) {
@@ -42,6 +41,7 @@ class GimelServicesProperties(userProps: Map[String, String] = Map[String, Strin
   val apiClusterById: String = userProps.getOrElse(PCatalogUrlConfigs.CLUSTER_BY_ID, props(PCatalogUrlConfigs.CLUSTER_BY_ID))
   val apiClusters: String = userProps.getOrElse(PCatalogUrlConfigs.API_CLUSTERS, props(PCatalogUrlConfigs.API_CLUSTERS))
   val apiObjectSchema: String = userProps.getOrElse(PCatalogUrlConfigs.API_OBJECT_SCHEMA, props(PCatalogUrlConfigs.API_OBJECT_SCHEMA))
+  val apiSystemDiscoveryStatus: String = userProps.getOrElse(PCatalogUrlConfigs.API_SYSTEM_DISCOVERY_STATUS, props(PCatalogUrlConfigs.API_SYSTEM_DISCOVERY_STATUS))
   val apiDeactivateObjectSchema: String = userProps.getOrElse(PCatalogUrlConfigs.DEACTIVATE_OBJECT_SCHEMA, props(PCatalogUrlConfigs.DEACTIVATE_OBJECT_SCHEMA))
   val apiObjectSchemaByStorageSystemId: String = userProps.getOrElse(PCatalogUrlConfigs.OBJECT_SCHEMA_BY_SYSTEM_ID, props(PCatalogUrlConfigs.OBJECT_SCHEMA_BY_SYSTEM_ID))
   val apiPagedObjectSchemaByStorageSystemId: String = userProps.getOrElse(PCatalogUrlConfigs.PAGED_OBJECT_SCHEMA_BY_SYSTEM_ID, props(PCatalogUrlConfigs.PAGED_OBJECT_SCHEMA_BY_SYSTEM_ID))
@@ -61,6 +61,11 @@ class GimelServicesProperties(userProps: Map[String, String] = Map[String, Strin
   val apiDatasetPost: String = userProps.getOrElse(PCatalogUrlConfigs.REGISTER_DATASET, props(PCatalogUrlConfigs.REGISTER_DATASET))
   val apiStorageSystemContainers: String = userProps.getOrElse(PCatalogUrlConfigs.STORAGE_SYSTEM_CONTAINERS, props(PCatalogUrlConfigs.STORAGE_SYSTEM_CONTAINERS))
   val apiDatasetByName: String = userProps.getOrElse(PCatalogUrlConfigs.DATASET_BY_NAME, props(PCatalogUrlConfigs.DATASET_BY_NAME))
+  val apiRangerPoliciesByLocation: String = userProps.getOrElse(PCatalogUrlConfigs.RANGER_POLICIES_BY_LOCATION, props(PCatalogUrlConfigs.RANGER_POLICIES_BY_LOCATION))
+  val apiStorageTypes = userProps.getOrElse(PCatalogUrlConfigs.STORAGE_TYPES, props(PCatalogUrlConfigs.STORAGE_TYPES))
+  val apiZoneByName = userProps.getOrElse(PCatalogUrlConfigs.ZONE_BY_NAME, props(PCatalogUrlConfigs.ZONE_BY_NAME))
+  val apiPostStorageSystem = userProps.getOrElse(PCatalogUrlConfigs.POST_STORAGE_SYSTEM, props(PCatalogUrlConfigs.POST_STORAGE_SYSTEM))
+  val appName = userProps.getOrElse(GimelConstants.APP_NAME, userProps.getOrElse(GimelConstants.SPARK_APP_NAME, "Unknown"))
 
   // Rest URLs
   val baseUrl = s"$restMethod://$restHost:$restPort"
@@ -68,6 +73,7 @@ class GimelServicesProperties(userProps: Map[String, String] = Map[String, Strin
   val urlClusterById = s"$baseUrl$apiClusterById"
   val urlClusters = s"$baseUrl$apiClusters"
   val urlObjectSchema = s"$baseUrl$apiObjectSchema"
+  val urlSystemDiscoveryStatus = s"$baseUrl$apiSystemDiscoveryStatus"
   val urlDeactivateObject = s"$baseUrl$apiDeactivateObjectSchema"
   val urlObjectSchemaByStorageSystemId = s"$baseUrl$apiObjectSchemaByStorageSystemId"
   val urlPagedObjectSchemaByStorageSystemId = s"$baseUrl$apiPagedObjectSchemaByStorageSystemId"
@@ -87,6 +93,10 @@ class GimelServicesProperties(userProps: Map[String, String] = Map[String, Strin
   val urlDataSetPost = s"$baseUrl$apiDatasetPost"
   val urlStorageSystemContainers = s"$baseUrl$apiStorageSystemContainers"
   val urlDataSetByName = s"$baseUrl$apiDatasetByName"
+  val urlRangerPoliciesByLocation = s"$baseUrl$apiRangerPoliciesByLocation"
+  val urlStorageTypes = s"$baseUrl$apiStorageTypes"
+  val urlByZoneName = s"$baseUrl$apiZoneByName"
+  val urlStorageSystemPost = s"$baseUrl$apiPostStorageSystem"
 
   // Druid URLs
   val restDruidMethod: String = userProps.getOrElse(PCatalogUrlConfigs.REST_DRUID_PROTOCOL, props(PCatalogUrlConfigs.REST_DRUID_PROTOCOL))

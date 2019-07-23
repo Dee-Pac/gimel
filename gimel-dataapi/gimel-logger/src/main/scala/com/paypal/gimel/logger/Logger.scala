@@ -21,10 +21,13 @@ package com.paypal.gimel.logger
 
 import java.util.Calendar
 
+import com.paypal.gimel.logger.conf.LoggerConstants
+
 import scala.collection.JavaConverters._
 import scala.collection.mutable.Map
-
 import com.paypal.gimel.logging.impl.JSONSystemLogger
+
+import scala.util.parsing.json.JSONObject
 
 /**
   * com.paypal.gimel.logger.Logger SingleTon
@@ -74,7 +77,7 @@ class Logger(config: Any) extends Serializable {
   private val _APP_reference = config.toString
   private val logModes = Map(4 -> "INFO", 3 -> "DEBUG", 2 -> "WARN", 1 -> "ERROR")
   @volatile private var logMode = 4
-  val logger: JSONSystemLogger = JSONSystemLogger.getInstance(getClass)
+  val logger: Logger = Logger(this.getClass.getName)
   private var logAudit = false
   var consolePrintEnabled = false
 
@@ -208,16 +211,19 @@ class Logger(config: Any) extends Serializable {
   /**
     * Logging the Method Access to Kafka
     *
-    * @param yarnAppId   Yarn Application ID
-    * @param yarnAppName Yarn Application Name
-    * @param runType     Run Type is Either Batch or Stream
-    * @param runMode     Either Batch or Stream
-    * @param cluster     The Cluster
-    * @param user        User who is running the API code
-    * @param appTag      Gimel Unique Application Tag
-    * @param method      The method, example - read, write, executeQuery
-    * @param sql         The SQL String executed by User
-    * @param moreProps   Any additional optional parameters that the Logging Api is trying to log
+    * @param yarnAppId                 Yarn Application ID
+    * @param yarnAppName               Yarn Application Name
+    * @param runType                   Run Type is Either Batch or Stream
+    * @param runMode                   Either Batch or Stream
+    * @param cluster                   The Cluster, example Horton, Stampy
+    * @param user                      User who is running the API code
+    * @param appTag                    Gimel Unique Application Tag
+    * @param method                    The method, example - read, write, executeQuery
+    * @param sql                       The SQL String executed by User
+    * @param moreProps                 Any additional optional parameters that the Logging Api is trying to log
+    * @param apiAccessCompletionStatus status of the API call
+    * @param apiErrorDescription       detailed stacktrace of error occured
+    * @param apiError                  Any specific errors in API
     * @return Map of all the information that is being logged.
     */
   def logMethodAccess(yarnAppId: String
@@ -229,7 +235,12 @@ class Logger(config: Any) extends Serializable {
                       , appTag: String
                       , method: String
                       , sql: String = ""
-                      , moreProps: Map[String, String] = Map()): Map[String, Any] = {
+                      , moreProps: scala.collection.mutable.Map[String, String] = scala.collection.mutable.Map()
+                      , apiAccessCompletionStatus: String = LoggerConstants.UNKNOWN_STRING
+                      , apiErrorDescription: String = LoggerConstants.UNKNOWN_STRING
+                      , apiError: String = LoggerConstants.UNKNOWN_STRING
+                     ): Map[String, Any] = {
+
 
     val additionalProps: Map[String, String] = moreProps.map { case (k, v) =>
       (k.replaceAllLiterally(".", "~") -> v)
@@ -260,25 +271,29 @@ class Logger(config: Any) extends Serializable {
     accessAuditInfo
   }
 
-
   /**
     * Logging the Method Access to Kafka
     *
-    * @param yarnAppId   Yarn Application ID
-    * @param yarnAppName Yarn Application Name
-    * @param runType     Run Type mostly the class name
-    * @param runMode     Either Batch or Stream
-    * @param cluster     The Cluster
-    * @param user        User who is running the API code
-    * @param appTag      Gimel Unique Application Tag
-    * @param method      The method, example - read, write, executeQuery
-    * @param dataSet     Name of the dataset
-    * @param systemType  Type of the System  , say Kafka, Elasticsearch , etc.
-    * @param sql         The SQL String executed by User
-    * @param moreProps   Any additional optional parameters that the Logging Api is trying to log
+    * @param yarnAppId                 Yarn Application ID
+    * @param yarnAppName               Yarn Application Name
+    * @param runType                   Run Type mostly the class name
+    * @param runMode                   Either Batch or Stream
+    * @param cluster                   The Cluster, example Horton, Stampy
+    * @param user                      User who is running the API code
+    * @param appTag                    Gimel Unique Application Tag
+    * @param method                    The method, example - read, write, executeQuery
+    * @param dataSet                   Name of the dataset
+    * @param systemType                Type of the System  , say Kafka, Elasticsearch , etc.
+    * @param sql                       The SQL String executed by User
+    * @param moreProps                 Any additional optional parameters that the Logging Api is trying to log
+    * @param apiAccessCompletionStatus status of the API call
+    * @param apiErrorDescription       detailed stacktrace of error occured
+    * @param apiError                  Any specific errors in API
+    * @param startTime                 start time of API
+    * @param endTime                   endtime for API
+    * @param executionTime             total execution time for API
     * @return Map of all the information that is being logged.
     */
-
   def logApiAccess(yarnAppId: String
                    , yarnAppName: String
                    , runType: String
@@ -290,10 +305,16 @@ class Logger(config: Any) extends Serializable {
                    , dataSet: String
                    , systemType: String
                    , sql: String = ""
-                   , moreProps: Map[String, String] = Map()
+                   , moreProps: scala.collection.mutable.Map[String, String] = scala.collection.mutable.Map()
+                   , apiAccessCompletionStatus: String = "unknown"
+                   , apiErrorDescription: String = "unknown"
+                   , apiError: String = "unknown"
+                   , startTime: Long
+                   , endTime: Long
+                   , executionTime: Double = 0.0
                   ): Map[String, Any] = {
 
-    val additionalProps: Map[String, String] = moreProps.map { case (k, v) =>
+    val additionalProps: scala.collection.mutable.Map[String, String] = moreProps.map { case (k, v) =>
       (k.replaceAllLiterally(".", "~") -> v)
     }
     val accessAuditInfo: Map[String, Any] = Map(
@@ -309,10 +330,16 @@ class Logger(config: Any) extends Serializable {
       "apiDataSetType" -> systemType,
       "logtime" -> System.currentTimeMillis(),
       "logType" -> "gimelDataApiAccessAudit",
-      "apiVersion" -> "spark_2.2.0",
+      "apiVersion" -> sparkVersion,
       "apiSql" -> sql,
-      "additionalProps" -> additionalProps
-    )
+      "additionalProps" -> additionalProps,
+      "apiAccessCompletionStatus" -> apiAccessCompletionStatus,
+      "apiErrorDescription" -> apiErrorDescription,
+      "apiError" -> apiError,
+      "apiStartTime" -> startTime,
+      "apiEndTime" -> endTime,
+      "apiExecutionTime" -> executionTime
+    ) ++ moreProps
 
     if (logAudit) {
       this.info("Auditing Information being posted to Gimel Audit Log...")
@@ -328,8 +355,30 @@ class Logger(config: Any) extends Serializable {
       , user
       , appTag
       , method
+      , sql
+      , additionalProps
+      , apiAccessCompletionStatus
+      , apiErrorDescription
+      , apiError
     )
+
     accessAuditInfo
+  }
+
+
+  /**
+    * This method prints the error on console.
+    *
+    * @param msg text to print
+    */
+  def throwError(msg: String): Unit = {
+    val errorMsg =
+      s"""\n|-------------------------------------------------------------------------------------------------------------------
+          |${msg}
+          |-------------------------------------------------------------------------------------------------------------------
+          """.stripMargin
+
+    println(s"GIMEL-ERROR | ${Calendar.getInstance().getTime} | ${errorMsg}")
   }
 
 }

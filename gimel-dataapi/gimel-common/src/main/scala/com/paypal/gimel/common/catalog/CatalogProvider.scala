@@ -22,23 +22,22 @@ package com.paypal.gimel.common.catalog
 import scala.collection.JavaConverters._
 import scala.collection.immutable.Map
 import scala.language.implicitConversions
-
 import org.apache.hadoop.hive.conf.HiveConf
 import org.apache.hadoop.hive.metastore.HiveMetaStoreClient
 import org.apache.hadoop.hive.metastore.api.Table
 import spray.json._
 
 import com.paypal.gimel.common.catalog.GimelCatalogJsonProtocol._
-import com.paypal.gimel.common.conf.{CatalogProviderConfigs, CatalogProviderConstants}
-import com.paypal.gimel.common.conf.GimelConstants
+import com.paypal.gimel.common.conf.{CatalogProviderConfigs, CatalogProviderConstants, GimelConstants, PCatalogPayloadConstants}
 import com.paypal.gimel.logger.Logger
 
 case class Field(fieldName: String,
                  fieldType: String = "string",
                  isFieldNullable: Boolean = true,
                  partitionStatus: Boolean = false,
-                 columnIndex: Int = 0
-                )
+                 columnIndex: Int = 0,
+                 columnClass: String = PCatalogPayloadConstants.COLUMN_DEFAULT_RESTRICTED,
+                 restrictionStatus: Boolean = false)
 
 case class DataSetProperties(datasetType: String,
                              fields: Array[Field],

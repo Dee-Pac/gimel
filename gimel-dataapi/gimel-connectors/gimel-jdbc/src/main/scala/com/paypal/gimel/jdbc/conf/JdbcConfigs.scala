@@ -25,6 +25,7 @@ object JdbcConfigs {
   val jdbcDriverClassKey: String = "gimel.jdbc.driver.class"
   val jdbcInputTableNameKey: String = "gimel.jdbc.input.table.name"
   val jdbcUrl: String = "gimel.jdbc.url"
+  val jdbcDbTable : String = "gimel.jdbc.dbtable"
 
   // misc properties for read/write
   val jdbcStorageHandler: String = "org.apache.hadoop.hive.jdbc.storagehandler.JdbcStorageHandler"
@@ -38,6 +39,7 @@ object JdbcConfigs {
   val jdbcPasswordStrategy: String = "gimel.jdbc.p.strategy"
   val jdbcUpdateSetColumns: String = "gimel.jdbc.update.setColumns"
   val jdbcUpdateWhereColumns: String = "gimel.jdbc.update.whereColumns"
-
+  val jdbcPFileSource = "gimel.jdbc.p.file.source"
+  val jdbcPartitionColumns = "gimel.jdbc.read.partition.columns"
 }
 

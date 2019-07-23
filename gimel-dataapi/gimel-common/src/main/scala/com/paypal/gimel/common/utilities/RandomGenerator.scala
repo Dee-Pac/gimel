@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 PayPal Inc.
+ * Copyright 2017 PayPal Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -17,15 +17,27 @@
  * limitations under the License.
  */
 
-package com.paypal.gimel.hive.conf
+package com.paypal.gimel.common.utilities
 
-object HiveConfigs {
-  val dataFormat = "gimel.hdfs.data.format"
-  val dataLocation = "gimel.hdfs.data.location"
-  val hiveMySqlServer = "gimel.hive.mysql.server"
-  val hiveMySQLDB = "gimel.hive.mysql.db"
-  val hiveMySQLPort = "gimel.hive.mysql.port"
-  val hiveDBName = "gimel.hive.db.name"
-  val hiveTableName = "gimel.hive.table.name"
-  val hdfsStorageNameKey = "gimel.hdfs.storage.name"
+import scala.util.Random
+
+object RandomGenerator {
+
+  /**
+    * Returns a random integer between a given range
+    *
+    * @param low Range minimum
+    * @param high Range maximum
+    * @return Random integer between range [low, high)
+    */
+  def getRandomInt(low: Int, high: Int): Int = Random.nextInt(high - low) + low
+
+  /**
+    * Returns a random string of given length
+    *
+    * @param length Length of the random string to be generated
+    * @return Random string of specified length
+    */
+  def getRandomString(length: Int): String = (Random.alphanumeric take length).mkString("")
+
 }

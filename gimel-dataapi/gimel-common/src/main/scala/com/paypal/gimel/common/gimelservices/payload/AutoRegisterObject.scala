@@ -37,5 +37,5 @@ case class AutoRegisterObject(
                          , isActiveYN: String = ""
                          , createdUserOnStore: String
                          , createdTimestampOnStore: String
-
+                         , isSelfDiscovered: String
                        )

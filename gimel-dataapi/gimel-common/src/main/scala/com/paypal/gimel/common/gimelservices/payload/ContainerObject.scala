@@ -30,4 +30,5 @@ case class ContainerObject(
                               , isActiveYN: String
                               , createdUserOnStore: String
                               , createdTimestampOnStore: String
+                              , isSelfDiscovered: String
                           )

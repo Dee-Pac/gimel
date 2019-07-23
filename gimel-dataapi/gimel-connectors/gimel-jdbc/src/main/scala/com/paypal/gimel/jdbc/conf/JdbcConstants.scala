@@ -31,6 +31,10 @@ object JdbcConstants {
   val MYSQL = "MYSQL"
   val TERADATA = "TERADATA"
   val jdbcDefaultPasswordStrategy = "file"
+  val ORCALE = "ORACLE"
+  val POSTGRESQL = "POSTGRESQL"
+  val defaultJdbcPFileSource = "hdfs"
+  val localFileSource = "local"
 
   // polling properties
   val jdbcPPath = "default_path"
@@ -48,6 +52,7 @@ object JdbcConstants {
   val defaultUpperBound = 20
   val defaultReadType = "BATCH"
   val noPartitionColumn = "10"
+  val readOperation = "read"
 
   // JDBC write configs
   val GIMEL_TEMP_PARTITION = "GIMEL_TEMP_PARTITION"

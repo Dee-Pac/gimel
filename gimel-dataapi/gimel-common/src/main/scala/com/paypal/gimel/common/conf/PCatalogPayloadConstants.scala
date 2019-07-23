@@ -25,12 +25,21 @@ object PCatalogPayloadConstants {
   val SYSTEM_ATTRIBUTE_NAME: String = "storageDsAttributeKeyName"
   val SYSTEM_ATTRIBUTE_VALUE: String = "storageSystemAttributeValue"
   val OBJECT_ATTRIBUTES_KEY: String = "objectAttributes"
+  val CUSTOM_ATTRIBUTES_KEY: String = "customAttributes"
+  val OBJECT_ATTRIBUTE_KEY: String = "objectAttributeKey"
   val OBJECT_ATTRIBUTE_VALUE: String = "objectAttributeValue"
   val OBJECT_SCHEMA: String = "objectSchema"
   val COLUMN_NAME: String = "columnName"
   val COLUMN_TYPE: String = "columnType"
+  val COLUMN_CLASS: String = "columnClass"
   val COLUMN_INDEX: String = "columnIndex"
   val COLUMN_PARTITION_STATUS: String = "partitionStatus"
+  val COLUMN_RESTRICTION_STATUS: String = "restrictionStatus"
+  val COLUMN_DEFAULT_RESTRICTED: String = "restricted_columns_class5"
+
+  val COLUMN_RESTRICTED_CLASS_2: String = "restricted_columns_class2"
+  val COLUMN_RESTRICTED_CLASS_3: String = "restricted_columns_class3"
+
   val ACTIVE_FLAG: String = "Y"
   val INACTIVE_FLAG: String = "N"
 }

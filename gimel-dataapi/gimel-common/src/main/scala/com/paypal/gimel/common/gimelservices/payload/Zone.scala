@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 PayPal Inc.
+ * Copyright 2017 PayPal Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -17,15 +17,12 @@
  * limitations under the License.
  */
 
-package com.paypal.gimel.hive.conf
+package com.paypal.gimel.common.gimelservices.payload
 
-object HiveConfigs {
-  val dataFormat = "gimel.hdfs.data.format"
-  val dataLocation = "gimel.hdfs.data.location"
-  val hiveMySqlServer = "gimel.hive.mysql.server"
-  val hiveMySQLDB = "gimel.hive.mysql.db"
-  val hiveMySQLPort = "gimel.hive.mysql.port"
-  val hiveDBName = "gimel.hive.db.name"
-  val hiveTableName = "gimel.hive.table.name"
-  val hdfsStorageNameKey = "gimel.hdfs.storage.name"
-}
+case class Zone(
+                  zoneId: Int
+                  , zoneName: String = "default_zone"
+                  , zoneDescription: String = ""
+                  , isActiveYN: String = "Y"
+                  , createdUser: String = "gimel_admin"
+                )

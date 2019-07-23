@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 PayPal Inc.
+ * Copyright 2019 PayPal Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -19,17 +19,22 @@
 
 package com.paypal.gimel.sql
 
+import scala.collection.immutable.Map
 import scala.util.{Failure, Success, Try}
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql._
+import org.apache.spark.sql.types.StructField
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 
 import com.paypal.gimel._
 import com.paypal.gimel.common.catalog.{CatalogProvider, DataSetProperties}
 import com.paypal.gimel.common.conf.{CatalogProviderConfigs, GimelConstants}
+import com.paypal.gimel.common.security.AuthHandler
 import com.paypal.gimel.common.utilities.Timer
+import com.paypal.gimel.datasetfactory.GimelDataSet
 import com.paypal.gimel.datastreamfactory.{StreamingResult, WrappedData}
+import com.paypal.gimel.jdbc.conf.JdbcConstants
 import com.paypal.gimel.kafka.conf.{KafkaConfigs, KafkaConstants}
 import com.paypal.gimel.logger.Logger
 import com.paypal.gimel.logging.GimelStreamingListener
@@ -44,6 +49,7 @@ object GimelQueryProcessor {
 
   val originalUser = sys.env("USER")
   var user = originalUser
+  var isQueryFromGTS = false
   val yarnCluster = com.paypal.gimel.common.utilities.DataSetUtils.getYarnClusterName()
 
   /**
@@ -63,6 +69,58 @@ object GimelQueryProcessor {
     setCatalogProviderName(catalogProviderName)
   }
 
+  /**
+    * Sets Spark GTS User Name if available
+    *
+    * @param sparkSession SparkSession
+    */
+  def setGtsUser(sparkSession: SparkSession): Unit = {
+    def MethodName: String = new Exception().getStackTrace.apply(1).getMethodName
+
+    logger.info(" @Begin --> " + MethodName)
+
+    val gtsUser: String = sparkSession.sparkContext.getLocalProperty(GimelConstants.GTS_USER_CONFIG)
+    if (gtsUser != null) {
+      logger.info(s"GTS User [${gtsUser}] will be used to over ride executing user [${originalUser}] who started GTS.")
+      sparkSession.sql(s"set ${GimelConstants.GTS_USER_CONFIG}=${gtsUser}")
+
+      // set jdbc username,if already not set in sparkconf
+      val jdbcUser: Option[String] = sparkSession.conf.getOption(JdbcConstants.jdbcUserName)
+      if (jdbcUser == None) {
+        logger.info(s"Setting ${JdbcConstants.jdbcUserName}=${gtsUser}")
+        sparkSession.sql(s"set ${JdbcConstants.jdbcUserName}=${gtsUser}")
+      }
+      user = gtsUser
+      isQueryFromGTS = true
+    }
+  }
+
+//  /**
+//    * This function guards any runtime changes attempted by users to override GTS specific configurations.
+//    *
+//    * @param sql
+//    * @param sparkSession
+//    */
+//  def guardGTSStatements(sql: String, sparkSession: SparkSession): Unit = {
+//    def MethodName: String = new Exception().getStackTrace.apply(1).getMethodName
+//
+//    logger.info(" @Begin --> " + MethodName)
+//
+//    // Guard only if user is GTS Super User
+//    if (sparkSession.sparkContext.sparkUser.equalsIgnoreCase(GimelConstants.GTS_DEFAULT_USER)) {
+//
+//      val checkFlag =
+//      // Impersonation Flag is not allowed to be set in GSQL
+//        sql.toLowerCase.contains(GimelConstants.GTS_IMPERSONATION_FLAG) ||
+//          // JDBC User is not alloweed to be set in GSQL
+//          // sql.toLowerCase.contains(JdbcConstants.jdbcUserName) ||
+//          // GTS User should not be overridded
+//          sql.toLowerCase.contains(GimelConstants.GTS_USER_CONFIG)
+//
+//      if (checkFlag) throw new Exception(s"SECURITY VIOLATION | Execution of this statement is not allowed: ${sql}")
+//    }
+//
+//  }
 
   /**
     * Core Function that will be called from SCAAS for executing a SQL
@@ -75,39 +133,100 @@ object GimelQueryProcessor {
     def MethodName: String = new Exception().getStackTrace.apply(1).getMethodName
 
     logger.info(" @Begin --> " + MethodName)
+
+    val uniformSQL = sql.replace("\n", " ").trim
+    val sqlArray: Array[String] = uniformSQL.split(";")
+    val totalStatements = sqlArray.length
+    val dataFrames: Array[DataFrame] = sqlArray.zipWithIndex.map(eachSql => {
+      val sqlString = eachSql._1
+      val index = eachSql._2
+      logger.info(s"Executing statement: ${sqlString}")
+      try {
+        executeBatchStatement(sqlString, sparkSession)
+      }
+      catch {
+        case e: Throwable =>
+          val errorMsg =
+            s"""
+               | Statements[${index}/${totalStatements}] successfully executed.
+               | Statement[${index + 1}] execution failed --> ${sqlString}
+            """.stripMargin
+          logger.throwError(s"${errorMsg}")
+          throw e
+      }
+    })
+    logger.info(s"${totalStatements}/${totalStatements} statements successfully executed.")
+    dataFrames(totalStatements - 1)
+  }
+
+  /**
+    * This function sets default values for gimel properties if not supplied by the user
+    *
+    * @param sparkSession - spark session
+    */
+  def setSparkSessionConfForGTS(sparkSession: SparkSession): Unit = {
+
+    if (AuthHandler.isAuthRequired(sparkSession)) {
+      logger.info("Setting default properties for Gimel Thrift Server if not supplied by user")
+      sparkSession.conf.set(KafkaConfigs.kafkaConsumerClearCheckpointKey, sparkSession.conf.get(KafkaConfigs.kafkaConsumerClearCheckpointKey, "true"))
+      sparkSession.conf.set(KafkaConfigs.kafkaConsumerReadCheckpointKey, sparkSession.conf.get(KafkaConfigs.kafkaConsumerReadCheckpointKey, "false"))
+    }
+  }
+
+  /**
+    * This method will process one statement from executebatch
+    *
+    * @param sql          SQL String supplied by client
+    * @param sparkSession : SparkSession
+    * @return Resulting String < either sample data for select queries, or "success" / "failed" for insert queries
+    */
+  def executeBatchStatement(sql: String, sparkSession: SparkSession): DataFrame = {
+    def MethodName: String = new Exception().getStackTrace.apply(1).getMethodName
+    logger.info(" @Begin --> " + MethodName)
+
     logger.setSparkVersion(sparkSession.version)
     sparkSession.sparkContext.setLogLevel("ERROR")
-
-    // At Run Time - Set the Catalog Provider and The Name Space of the Catalog (like the Hive DB Name when catalog Provider = HIVE)
-    setCatalogProviderInfo(sparkSession)
-
+    // guardGTSStatements(sql, sparkSession)
     val sparkAppName = sparkSession.conf.get("spark.app.name")
-
 
     try {
 
+      // At Run Time - Set the Catalog Provider and The Name Space of the Catalog (like the Hive DB Name when catalog Provider = HIVE)
+      setCatalogProviderInfo(sparkSession)
+
+      // If query comes from GTS - interpret the GTS user and set it
+      setGtsUser(sparkSession)
+
+      setSparkSessionConfForGTS(sparkSession)
       val options = queryUtils.getOptions(sparkSession)._2
 
-      if (options(GimelConstants.LOG_LEVEL).toString == "CONSOLE") {
-        logger.setLogLevel("INFO")
-        logger.consolePrintEnabled = true
+      val gimelLoggingLevel: String = options.getOrElse(GimelConstants.LOG_LEVEL, GimelConstants.DEFAULT_LOG_LEVEL).toUpperCase()
+      logger.setLogLevel(gimelLoggingLevel)
+      gimelLoggingLevel match {
+        case "DEBUG" | "CONSOLE" =>
+          logger.consolePrintEnabled = true
+        case _ =>
+          logger.consolePrintEnabled = false
       }
-      else logger.setLogLevel(options(GimelConstants.LOG_LEVEL).toString)
 
       var resultingString = ""
       val queryTimer = Timer()
-      val startTime = queryTimer.start
+      //      val startTime = queryTimer.start
       val isCheckPointEnabled = options(KafkaConfigs.kafkaConsumerReadCheckpointKey).toBoolean
-      val isClearCheckPointEnabled = options(KafkaConfigs.kafkaConsumerClearCheckpointKey).toBoolean
+      //      val isClearCheckPointEnabled = options(KafkaConfigs.kafkaConsumerClearCheckpointKey).toBoolean
+
       logger.debug(s"Is CheckPointing Requested By User --> $isCheckPointEnabled")
       val dataSet: DataSet = DataSet(sparkSession)
 
-      val data = if (queryUtils.isDataDefinition(sql)) {
-        // handleDDLs(sql, sparkSession, dataSet, options)
-        throw new Exception(s"This statement is not supported in current Gimel Version: ${sql}")
+      // Query is via GTS
+      val isGTSImpersonated = AuthHandler.isAuthRequired(sparkSession)
 
-      }
-      else {
+      val data = if (queryUtils.isUDCDataDefinition(sql)) {
+        logger.info("This path is dynamic dataset creation path")
+        handleDDLs(sql, sparkSession, dataSet, options)
+      } else {
+        // Allow thrift server to execute the Query for all other cases.
+
         val (originalSQL, destination, selectSQL, kafkaDataSets, queryPushDownFlag) = resolveSQL(sql, sparkSession, dataSet)
         destination match {
           case Some(target) =>
@@ -117,35 +236,70 @@ object GimelQueryProcessor {
                 resultingString = result
               case Failure(e) =>
                 resultingString = s"Query Failed in function : $MethodName. Error --> \n\n ${
-                  e.getStackTraceString
+                  e.toString
                 }"
                 logger.error(resultingString)
-                throw new Exception(resultingString, e)
+                throw e
             }
-            if (isCheckPointEnabled) kafkaDataSets.foreach(k => k.saveCheckPoint())
-            if (isClearCheckPointEnabled) kafkaDataSets.foreach(k => k.clearCheckPoint())
-            val json = Seq(s"""{"Query Execution":"${resultingString}"}""")
-            sparkSession.read.json(sparkSession.sparkContext.parallelize(json))
+
+            if (isCheckPointEnabled) {
+              saveCheckPointforKafka(kafkaDataSets)
+            }
+            import sparkSession.implicits._
+            Seq(resultingString).toDF("Query Execution")
+
           case _ =>
             logger.info(s"No Target, returning DataFrame back to client.")
             executeSelectClause(selectSQL, sparkSession, queryPushDownFlag)
         }
       }
 
+      // pushing logs to ES
+      logger.logMethodAccess(sparkSession.sparkContext.getConf.getAppId
+        , sparkSession.conf.get("spark.app.name")
+        , this.getClass.getName
+        , KafkaConstants.gimelAuditRunTypeBatch
+        , yarnCluster
+        , user
+        , toLogFriendlyString(s"${yarnCluster}/${user}/${sparkAppName}")
+        , MethodName
+        , sql
+        , scala.collection.mutable.Map("sql" -> sql, "isQueryFromGTS" -> isQueryFromGTS.toString, "originalUser" -> originalUser)
+        , GimelConstants.SUCCESS
+        , GimelConstants.EMPTY_STRING
+        , GimelConstants.EMPTY_STRING
+      )
 
       data
 
     }
     catch {
       case e: Throwable =>
-        throw e
+
+        logger.logMethodAccess(sparkSession.sparkContext.getConf.getAppId
+          , sparkSession.conf.get("spark.app.name")
+          , this.getClass.getName
+          , KafkaConstants.gimelAuditRunTypeBatch
+          , yarnCluster
+          , user
+          , toLogFriendlyString(s"${yarnCluster}/${user}/${sparkAppName}")
+          , MethodName
+          , sql
+          , scala.collection.mutable.Map("sql" -> sql, "isQueryFromGTS" -> isQueryFromGTS.toString, "originalUser" -> originalUser)
+          , GimelConstants.FAILURE
+          , e.toString + "\n" + e.getStackTraceString
+          , GimelConstants.UNKNOWN_STRING
+        )
+
+        // throw error to console
+        logger.throwError(e.toString)
+
+        throw new Exception(s"${e.getMessage}\n", e)
     }
-
-
   }
 
   /**
-    * Core Function that will be called from GIMEL-LOGGING for executing a SQL
+    * Core Function that will be called from SCAAS for executing a SQL
     * Executes the executeBatch function in streaming window
     *
     * @param sql          SQL String from client
@@ -157,23 +311,14 @@ object GimelQueryProcessor {
     def MethodName: String = new Exception().getStackTrace.apply(1).getMethodName
 
     logger.info(" @Begin --> " + MethodName)
+    logger.setSparkVersion(sparkSession.version)
     val sparkAppName = sparkSession.conf.get("spark.app.name")
-    logger.logMethodAccess(sparkSession.sparkContext.getConf.getAppId
-      , sparkSession.conf.get("spark.app.name")
-      , this.getClass.getName
-      , KafkaConstants.gimelAuditRunTypeStream
-      , yarnCluster
-      , user
-      , toLogFriendlyString(s"${yarnCluster}/${user}/${sparkAppName}")
-      , MethodName
-      , sql
-      , scala.collection.mutable.Map("sql" -> sql)
-    )
 
     // At Run Time - Set the Catalog Provider and The Name Space of the Catalog (like the Hive DB Name when catalog Provider = HIVE)
     setCatalogProviderInfo(sparkSession)
 
     try {
+
       sparkSession.sparkContext.setLogLevel("ERROR")
 
       val defaultGimelLogLevel = sparkSession.conf.get(GimelConstants.LOG_LEVEL, "ERROR").toString
@@ -199,7 +344,7 @@ object GimelQueryProcessor {
       val sqlContext = sparkSession.sqlContext
       val conf = new org.apache.spark.SparkConf()
       val ssc = new StreamingContext(sc, Seconds(batchInterval))
-      val listner: GimelStreamingListener = new GimelStreamingListener(conf)
+      val listner: GimelStreamingListener = new GimelStreamingListener(sc.getConf)
       ssc.addStreamingListener(listner)
       logger.debug(
         s"""
@@ -249,9 +394,9 @@ If mode=intelligent, then Restarting will result in Batch Mode Execution first f
                 executeBatch(newSQL, sparkSession)
               } catch {
                 case ex: Throwable =>
-                  logger.error(s"Stream Query Failed in function : $MethodName. Error --> \n\n${ex.getStackTraceString}")
-                  ex.printStackTrace()
-                  logger.error("Force - Stopping Streaming Context")
+                  // logger.error(s"Stream Query Failed in function : $MethodName. Error --> \n\n${ex.getStackTraceString}")
+                  // ex.printStackTrace()
+                  // logger.error("Force - Stopping Streaming Context")
                   ssc.sparkContext.stop()
                   throw ex
               }
@@ -261,42 +406,77 @@ If mode=intelligent, then Restarting will result in Batch Mode Execution first f
               }
               catch {
                 case ex: Throwable =>
-                  logger.error("Error in CheckPoint Operations in Streaming.")
-                  ex.printStackTrace()
+                  // logger.error("Error in CheckPoint Operations in Streaming.")
+                  // ex.printStackTrace()
                   ssc.sparkContext.stop()
               }
             }
           }
         } catch {
           case ex: Throwable =>
-            logger.error(s"ERROR In Streaming Window --> \n\n${ex.getStackTraceString}")
-            ex.printStackTrace()
+            // logger.error(s"ERROR In Streaming Window --> \n\n${ex.getStackTraceString}")
+            // ex.printStackTrace()
             ssc.sparkContext.stop()
             throw ex
         }
         dataStream.streamingContext.start()
         dataStream.streamingContext.awaitTerminationOrTimeout(streamawaitTerminationOrTimeout)
         dataStream.streamingContext.stop(false, true)
+
+        // push to logger
+        logger.logMethodAccess(sparkSession.sparkContext.getConf.getAppId
+          , sparkSession.conf.get("spark.app.name")
+          , this.getClass.getName
+          , KafkaConstants.gimelAuditRunTypeStream
+          , yarnCluster
+          , user
+          , toLogFriendlyString(s"${yarnCluster}/${user}/${sparkAppName}")
+          , MethodName
+          , sql
+          , scala.collection.mutable.Map("sql" -> sql)
+          , GimelConstants.SUCCESS
+          , GimelConstants.EMPTY_STRING
+          , GimelConstants.EMPTY_STRING
+        )
         "Success"
       }
-    }
 
+    }
     catch {
       case e: Throwable =>
+
+        logger.logMethodAccess(sparkSession.sparkContext.getConf.getAppId
+          , sparkSession.conf.get("spark.app.name")
+          , this.getClass.getName
+          , KafkaConstants.gimelAuditRunTypeStream
+          , yarnCluster
+          , user
+          , toLogFriendlyString(s"${yarnCluster}/${user}/${sparkAppName}")
+          , MethodName
+          , sql
+          , scala.collection.mutable.Map("sql" -> sql)
+          , GimelConstants.FAILURE
+          , e.toString + "\n" + e.getStackTraceString
+          , GimelConstants.UNKNOWN_STRING
+        )
+
+        // throw error to console
+        logger.throwError(e.toString)
+
         throw e
     }
 
   }
 
   /**
-    * Core Function that will be called from GIMEL-LOGGING for executing a SQL
+    * Core Function that will be called from SCAAS for executing a SQL
     *
     * @return RDD[Resulting String < either sample data for select queries, or "success" / "failed" for insert queries]
     */
   def executeBatchSparkMagic: (String, SparkSession) => RDD[String] = executeBatchSparkMagicRDD
 
   /**
-    * Core Function that will be called from GIMEL-LOGGING for executing a SQL
+    * Core Function that will be called from SCAAS for executing a SQL
     * Executes the executeBatchSparkMagicRDD function in streaming window
     *
     * @return RDD[Resulting String] < either sample data for select queries, or "success" / "failed" for insert queries
@@ -304,7 +484,7 @@ If mode=intelligent, then Restarting will result in Batch Mode Execution first f
   def executeStreamSparkMagic: (String, SparkSession) => RDD[String] = executeStreamSparkMagicRDD
 
   /**
-    * Core Function that will be called from GIMEL-LOGGING for executing a SQL
+    * Core Function that will be called from SCAAS for executing a SQL
     *
     * @param sql          SQL String supplied by client
     * @param sparkSession : SparkSession
@@ -314,25 +494,16 @@ If mode=intelligent, then Restarting will result in Batch Mode Execution first f
     def MethodName: String = new Exception().getStackTrace.apply(1).getMethodName
 
     logger.info(" @Begin --> " + MethodName)
+    logger.setSparkVersion(sparkSession.version)
     sparkSession.sparkContext.setLogLevel("ERROR")
     val sparkAppName = sparkSession.conf.get("spark.app.name")
-    logger.logMethodAccess(sparkSession.sparkContext.getConf.getAppId
-      , sparkSession.conf.get("spark.app.name")
-      , this.getClass.getName
-      , KafkaConstants.gimelAuditRunTypeBatch
-      , yarnCluster
-      , user
-      , toLogFriendlyString(s"${yarnCluster}/${user}/${sparkAppName}")
-      , MethodName
-      , sql
-      , scala.collection.mutable.Map("sql" -> sql)
-    )
 
     // At Run Time - Set the Catalog Provider and The Name Space of the Catalog (like the Hive DB Name when catalog Provider = HIVE)
     setCatalogProviderInfo(sparkSession)
-    try {
-      val options = queryUtils.getOptions(sparkSession)._2
 
+    try {
+
+      val options = queryUtils.getOptions(sparkSession)._2
       if (options(GimelConstants.LOG_LEVEL).toString == "CONSOLE") {
         logger.setLogLevel("INFO")
         logger.consolePrintEnabled = true
@@ -358,22 +529,69 @@ If mode=intelligent, then Restarting will result in Batch Mode Execution first f
               e.getStackTraceString
             }" """))
           val resultMsg = resultingRDD.collect().mkString("\n")
-          logger.error(resultMsg)
+          // logger.error(resultMsg)
           throw new Exception(resultMsg)
       }
-      if (isCheckPointEnabled) kafkaDataSets.foreach(k => k.saveCheckPoint())
-      if (isClearCheckPointEnabled) kafkaDataSets.foreach(k => k.clearCheckPoint())
+      if (isCheckPointEnabled) {
+        saveCheckPointforKafka(kafkaDataSets)
+      }
+      if (isClearCheckPointEnabled) {
+        clearCheckPointforKafka(kafkaDataSets)
+      }
+
+      // push logs to ES
+      logger.logMethodAccess(sparkSession.sparkContext.getConf.getAppId
+        , sparkSession.conf.get("spark.app.name")
+        , this.getClass.getName
+        , KafkaConstants.gimelAuditRunTypeStream
+        , yarnCluster
+        , user
+        , toLogFriendlyString(s"${yarnCluster}/${user}/${sparkAppName}")
+        , MethodName
+        , sql
+        , scala.collection.mutable.Map("sql" -> sql)
+        , GimelConstants.SUCCESS
+        , GimelConstants.EMPTY_STRING
+        , GimelConstants.EMPTY_STRING
+      )
       resultingRDD
     }
     catch {
       case e: Throwable =>
+
+        logger.logMethodAccess(sparkSession.sparkContext.getConf.getAppId
+          , sparkSession.conf.get("spark.app.name")
+          , this.getClass.getName
+          , KafkaConstants.gimelAuditRunTypeStream
+          , yarnCluster
+          , user
+          , toLogFriendlyString(s"${yarnCluster}/${user}/${sparkAppName}")
+          , MethodName
+          , sql
+          , scala.collection.mutable.Map("sql" -> sql)
+          , GimelConstants.FAILURE
+          , e.toString + "\n" + e.getStackTraceString
+          , GimelConstants.UNKNOWN_STRING
+        )
+        // throw error to console
+        logger.throwError(e.toString)
+
         throw e
     }
+  }
 
+
+  def saveCheckPointforKafka(kafkaDataSets: List[com.paypal.gimel.kafka.DataSet]): Unit = {
+    kafkaDataSets.foreach(k => k.saveCheckPoint())
+  }
+
+
+  def clearCheckPointforKafka(kafkaDataSets: List[com.paypal.gimel.kafka.DataSet]): Unit = {
+    kafkaDataSets.foreach(k => k.clearCheckPoint())
   }
 
   /**
-    * Core Function that will be called from GIMEL-LOGGING for executing a SQL
+    * Core Function that will be called from SCAAS for executing a SQL
     * Executes the executeBatchSparkMagicRDD function in streaming window
     *
     * @param sql          SQL String from client
@@ -391,19 +609,6 @@ If mode=intelligent, then Restarting will result in Batch Mode Execution first f
 
     // At Run Time - Set the Catalog Provider and The Name Space of the Catalog (like the Hive DB Name when catalog Provider = HIVE)
     setCatalogProviderInfo(sparkSession)
-
-
-    logger.logMethodAccess(sparkSession.sparkContext.getConf.getAppId
-      , sparkSession.conf.get("spark.app.name")
-      , this.getClass.getName
-      , KafkaConstants.gimelAuditRunTypeStream
-      , yarnCluster
-      , user
-      , toLogFriendlyString(s"${yarnCluster}/${user}/${sparkAppName}")
-      , MethodName
-      , sql
-      , scala.collection.mutable.Map("sql" -> sql)
-    )
 
     try {
 
@@ -425,8 +630,9 @@ If mode=intelligent, then Restarting will result in Batch Mode Execution first f
       val isStreamParallel = options(KafkaConfigs.isStreamParallelKey)
       val sc = sparkSession.sparkContext
       val sqlContext = sparkSession.sqlContext
+      val conf = new org.apache.spark.SparkConf()
       val ssc = new StreamingContext(sc, Seconds(batchInterval))
-      val listner: GimelStreamingListener = new GimelStreamingListener(sc.getConf)
+      val listner: GimelStreamingListener = new GimelStreamingListener(conf)
       ssc.addStreamingListener(listner)
       ssc.sparkContext.getConf
         .set(KafkaConfigs.isBackPressureEnabledKey, isBackPressureEnabled)
@@ -439,7 +645,7 @@ If mode=intelligent, then Restarting will result in Batch Mode Execution first f
           CatalogProvider.getDataSetProperties(table)
         DataSetUtils.getSystemType(dataSetProperties) == DataSetType.KAFKA
       }
-      if (kafkaTables.isEmpty) {
+      val data = if (kafkaTables.isEmpty) {
         throw new Exception("ERROR --> No Kafka Type DataSet In the Query To Stream !")
       } else {
         try {
@@ -460,9 +666,9 @@ If mode=intelligent, then Restarting will result in Batch Mode Execution first f
                 }
                 catch {
                   case ex: Throwable =>
-                    logger.error(s"Stream Query Failed in function : $MethodName. Error --> \n\n${ex.getStackTraceString}")
-                    ex.printStackTrace()
-                    logger.error("Force - Stopping Streaming Context")
+                    // logger.error(s"Stream Query Failed in function : $MethodName. Error --> \n\n${ex.getStackTraceString}")
+                    // ex.printStackTrace()
+                    // logger.error("Force - Stopping Streaming Context")
                     ssc.sparkContext.stop()
                 }
                 try {
@@ -471,8 +677,8 @@ If mode=intelligent, then Restarting will result in Batch Mode Execution first f
                 }
                 catch {
                   case ex: Throwable =>
-                    logger.error("Error in CheckPoint Operations in Streaming.")
-                    ex.printStackTrace()
+                    // logger.error("Error in CheckPoint Operations in Streaming.")
+                    // ex.printStackTrace()
                     ssc.sparkContext.stop()
                 }
               }
@@ -493,15 +699,52 @@ If mode=intelligent, then Restarting will result in Batch Mode Execution first f
         }
       }
 
+      // push logs to ES
+      logger.logMethodAccess(sparkSession.sparkContext.getConf.getAppId
+        , sparkSession.conf.get("spark.app.name")
+        , this.getClass.getName
+        , KafkaConstants.gimelAuditRunTypeStream
+        , yarnCluster
+        , user
+        , toLogFriendlyString(s"${yarnCluster}/${user}/${sparkAppName}")
+        , MethodName
+        , sql
+        , scala.collection.mutable.Map("sql" -> sql)
+        , GimelConstants.SUCCESS
+        , GimelConstants.EMPTY_STRING
+        , GimelConstants.EMPTY_STRING
+      )
+
+      data
     }
     catch {
       case e: Throwable =>
+
+        logger.logMethodAccess(sparkSession.sparkContext.getConf.getAppId
+          , sparkSession.conf.get("spark.app.name")
+          , this.getClass.getName
+          , KafkaConstants.gimelAuditRunTypeStream
+          , yarnCluster
+          , user
+          , toLogFriendlyString(s"${yarnCluster}/${user}/${sparkAppName}")
+          , MethodName
+          , sql
+          , scala.collection.mutable.Map("sql" -> sql)
+          , GimelConstants.FAILURE
+          , e.toString + "\n" + e.getStackTraceString
+          , GimelConstants.UNKNOWN_STRING
+        )
+
+        // throw error to console
+        logger.throwError(e.toString)
+
         throw e
     }
+
   }
 
   /**
-    * Core Function that will be called from GIMEL-LOGGING for executing a SQL
+    * Core Function that will be called from SCAAS for executing a SQL
     *
     * @param sql          SQL String supplied by client
     * @param sparkSession : SparkSession
@@ -514,17 +757,6 @@ If mode=intelligent, then Restarting will result in Batch Mode Execution first f
 
     logger.info(" @Begin --> " + MethodName)
     val sparkAppName = sparkSession.conf.get("spark.app.name")
-    logger.logMethodAccess(sparkSession.sparkContext.getConf.getAppId
-      , sparkSession.conf.get("spark.app.name")
-      , this.getClass.getName
-      , KafkaConstants.gimelAuditRunTypeBatch
-      , yarnCluster
-      , user
-      , toLogFriendlyString(s"${yarnCluster}/${user}/${sparkAppName}")
-      , MethodName
-      , sql
-      , scala.collection.mutable.Map("sql" -> sql)
-    )
 
     try {
       val options = queryUtils.getOptions(sparkSession)._2
@@ -550,22 +782,62 @@ If mode=intelligent, then Restarting will result in Batch Mode Execution first f
             s"""{"Batch Query Error" : "${
               e.getStackTraceString
             }" """
-          logger.error(resultSet)
+          // logger.error(resultSet)
           throw new Exception(resultSet)
       }
-      if (isCheckPointEnabled) kafkaDataSets.foreach(k => k.saveCheckPoint())
-      if (isClearCheckPointEnabled) kafkaDataSets.foreach(k => k.clearCheckPoint())
+
+      if (isCheckPointEnabled) {
+        saveCheckPointforKafka(kafkaDataSets)
+      }
+      if (isClearCheckPointEnabled) {
+        clearCheckPointforKafka(kafkaDataSets)
+      }
+
+      // push logs to ES
+      logger.logMethodAccess(sparkSession.sparkContext.getConf.getAppId
+        , sparkSession.conf.get("spark.app.name")
+        , this.getClass.getName
+        , KafkaConstants.gimelAuditRunTypeStream
+        , yarnCluster
+        , user
+        , toLogFriendlyString(s"${yarnCluster}/${user}/${sparkAppName}")
+        , MethodName
+        , sql
+        , scala.collection.mutable.Map("sql" -> sql)
+        , GimelConstants.SUCCESS
+        , GimelConstants.EMPTY_STRING
+        , GimelConstants.EMPTY_STRING
+      )
       resultSet
     }
     catch {
       case e: Throwable =>
+
+        logger.logMethodAccess(sparkSession.sparkContext.getConf.getAppId
+          , sparkSession.conf.get("spark.app.name")
+          , this.getClass.getName
+          , KafkaConstants.gimelAuditRunTypeStream
+          , yarnCluster
+          , user
+          , toLogFriendlyString(s"${yarnCluster}/${user}/${sparkAppName}")
+          , MethodName
+          , sql
+          , scala.collection.mutable.Map("sql" -> sql)
+          , GimelConstants.FAILURE
+          , e.toString + "\n" + e.getStackTraceString
+          , GimelConstants.UNKNOWN_STRING
+        )
+
+        // throw error to console
+        logger.throwError(e.toString)
+
         throw e
     }
 
   }
 
   /**
-    * Core Function that will be called from GIMEL-LOGGING for executing a SQL
+    * Core Function that will be called from SCAAS for executing a SQL
     * Executes the @executeBatchSparkMagicJSON function in streaming window
     *
     * @param sql          SQL String from client
@@ -579,21 +851,10 @@ If mode=intelligent, then Restarting will result in Batch Mode Execution first f
 
     logger.info(" @Begin --> " + MethodName)
     val sparkAppName = sparkSession.conf.get("spark.app.name")
-    logger.logMethodAccess(sparkSession.sparkContext.getConf.getAppId
-      , sparkSession.conf.get("spark.app.name")
-      , this.getClass.getName
-      , KafkaConstants.gimelAuditRunTypeStream
-      , yarnCluster
-      , user
-      , toLogFriendlyString(s"${yarnCluster}/${user}/${sparkAppName}")
-      , MethodName
-      , sql
-      , scala.collection.mutable.Map("sql" -> sql)
-    )
     var returnMsg = ""
 
-
     try {
+
       sparkSession.sparkContext.setLogLevel("ERROR")
       logger.setLogLevel(sparkSession.conf.get(GimelConstants.LOG_LEVEL, "ERROR").toString)
       val options = queryUtils.getOptions(sparkSession)._2
@@ -653,8 +914,8 @@ If mode=intelligent, then Restarting will result in Batch Mode Execution first f
                       s"""{ "Stream Query Error" : "${
                         ex.getStackTraceString
                       }" } """
-                    logger.error(returnMsg)
-                    ex.printStackTrace()
+                    // logger.error(returnMsg)
+                    // ex.printStackTrace()
                     logger.warning("Force - Stopping Streaming Context")
                     ssc.sparkContext.stop()
                     throw new Exception(returnMsg)
@@ -667,8 +928,8 @@ If mode=intelligent, then Restarting will result in Batch Mode Execution first f
               s"""{ "Stream Query ERROR" : "${
                 ex.getStackTraceString
               }" } """
-            logger.error(returnMsg)
-            ex.printStackTrace()
+            // logger.error(returnMsg)
+            // ex.printStackTrace()
             logger.warning("Force - Stopping Streaming Context")
             ssc.sparkContext.stop()
             throw new Exception(returnMsg)
@@ -678,18 +939,248 @@ If mode=intelligent, then Restarting will result in Batch Mode Execution first f
         dataStream.streamingContext.stop()
         returnMsg = s"""{"Stream Query" : "SUCCESS"} """
       }
-      returnMsg
 
+      // push logs to ES
+      logger.logMethodAccess(sparkSession.sparkContext.getConf.getAppId
+        , sparkSession.conf.get("spark.app.name")
+        , this.getClass.getName
+        , KafkaConstants.gimelAuditRunTypeStream
+        , yarnCluster
+        , user
+        , toLogFriendlyString(s"${yarnCluster}/${user}/${sparkAppName}")
+        , MethodName
+        , sql
+        , scala.collection.mutable.Map("sql" -> sql)
+        , GimelConstants.SUCCESS
+        , GimelConstants.EMPTY_STRING
+        , GimelConstants.EMPTY_STRING
+      )
+
+      returnMsg
     }
     catch {
       case e: Throwable =>
+
+        logger.logMethodAccess(sparkSession.sparkContext.getConf.getAppId
+          , sparkSession.conf.get("spark.app.name")
+          , this.getClass.getName
+          , KafkaConstants.gimelAuditRunTypeStream
+          , yarnCluster
+          , user
+          , toLogFriendlyString(s"${yarnCluster}/${user}/${sparkAppName}")
+          , MethodName
+          , sql
+          , scala.collection.mutable.Map("sql" -> sql)
+          , GimelConstants.FAILURE
+          , e.toString + "\n" + e.getStackTraceString
+          , GimelConstants.UNKNOWN_STRING
+        )
+
+        // throw error to console
+        logger.throwError(e.toString)
+
         throw e
     }
-
 
   }
 
   private def toLogFriendlyString(str: String): String = {
     str.replaceAllLiterally("/", "_").replaceAllLiterally(" ", "-")
   }
+
+  /**
+    * handleDDLs will direct to respective data set create/drop/truncate based on the incoming DDL
+    *
+    * @param sql          - SQL that is passed to create/drop/delete
+    * @param sparkSession - spark session
+    * @param dataSet      - dataset name
+    * @param options      - List of options
+    * @return
+    */
+  def handleDDLs(sql: String, sparkSession: SparkSession, dataSet: DataSet, options: Map[String, String]): DataFrame = {
+    val uniformSQL = sql.replace("\n", " ")
+    val sqlParts: Array[String] = uniformSQL.split(" ")
+    // remove all additional white spaces in the DDL statment
+    val newSql = sqlParts.filter(x => !x.isEmpty).mkString(" ")
+    val newSqlParts = newSql.split(" ")
+    val result: DataFrame = sqlParts.head.toUpperCase match {
+      // We have two "create ddl" paths. One with full create (plain) statement provided by the user
+      // the other where we have to construct from the dataframe after running select clause in given sql/ddl
+      // create table db.tablename(x int, y varchar(10) will be handled by handlePlainCreateDDL funcation
+      // create table db.tablename tblproperties("table_type":"SET") as select * from another_table.
+      case GimelConstants.DDL_CREATE_STRING => {
+        val index = sqlParts.indexWhere(_.toLowerCase().contains(GimelConstants.UDC_STRING))
+        val datasetname = sqlParts(index)
+        // Find out whether select is part of the create statement
+        val isHavingSelect = queryUtils.isHavingSelect(sql)
+        isHavingSelect match {
+          case true => handleSelectDDL(newSqlParts, newSql, dataSet, options, sparkSession)
+          case false => handlePlainCreateDDL(newSqlParts, dataSet, options, sparkSession)
+        }
+      }
+      //  following case will cover DROP DDL
+      case GimelConstants.DDL_DROP_STRING => {
+        val dataSetName = newSqlParts(2)
+        val result = dataSet.drop(dataSetName, options)
+        boolToDF(sparkSession, result)
+      }
+      //  following case will cover TRUNCATE DDL
+      case GimelConstants.DDL_TRUNCATE_STRING => {
+        val dataSetName = newSqlParts(2)
+        val result = dataSet.truncate(dataSetName, options)
+        boolToDF(sparkSession, result)
+      }
+      //  following case will cover both DELETE AND DELETE FROM DDL
+      case GimelConstants.DDL_DELETE_STRING => {
+        val dataSetName = newSqlParts.map(_.toUpperCase()).contains(GimelConstants.DDL_FROM_STRING) match {
+          case true => newSqlParts(2)
+          case _ => newSqlParts(1)
+        }
+        val result = dataSet.truncate(dataSetName, options)
+        boolToDF(sparkSession, result)
+      }
+      case _ => throw new Exception("Unexpected path at runtime. We should not arrive at this location !")
+    }
+    result
+  }
+
+  /**
+    * handleSelectDDL -
+    * Strip out the the select statement
+    * Run the sql using executeBatch and get the data frame back
+    * Get the schema from data frame and pass it in options
+    * Strip out the table properties and pass it in options
+    * Create the object/table
+    * Call dataSet.Write to the object/table that got created
+    *
+    * @param sqlParts     - each word in the sql comes as array
+    * @param sql          - the full sql query
+    * @param dataSet      - dataset Object itself
+    * @param options      - options comings from user
+    * @param sparkSession - Spark session
+    * @return
+    */
+  def handleSelectDDL(sqlParts: Array[String], sql: String, dataSet: DataSet, options: Map[String, String], sparkSession: SparkSession): DataFrame = {
+    val selectIndex = sqlParts.indexWhere(_.toUpperCase().contains(GimelConstants.SQL_SELECT_STRING))
+    val selectClause = sqlParts.slice(selectIndex, sqlParts.length).mkString(" ")
+    val pcatalogIndex = sqlParts.indexWhere(_.toLowerCase().contains(GimelConstants.UDC_STRING))
+    val datasetname = sqlParts(pcatalogIndex)
+
+    // Run the Select statement and get the results in a dataframe
+    val selectDF = executeBatch(selectClause, sparkSession)
+    val schema: Array[StructField] = selectDF.schema.fields
+
+    // Check if 'PARTITIONED' clause present in the sql. If so we want to get the partitioned fileds so that we will use it during creation of the table when building CREATE TABLE statement.
+    val partitionFields: Array[com.paypal.gimel.common.catalog.Field] = existsPartitionedByClause(sql) match {
+      case true => getPartitionsFields(sql)
+      case _ => Array[com.paypal.gimel.common.catalog.Field]()
+    }
+
+    val newOptions: Map[String, Any] = options ++ Map[String, Any](GimelConstants.TABLE_FILEDS -> schema, GimelConstants.CREATE_STATEMENT_IS_PROVIDED -> "false", GimelConstants.TABLE_SQL -> sql, GimelConstants.HIVE_DDL_PARTITIONS_STR -> partitionFields)
+
+    // Create the table and Write data into it from the selected dataframe
+    try {
+      if (dataSet.create(datasetname, newOptions)) {
+        logger.info("Table/object creation success")
+        dataSet.write(datasetname, selectDF, newOptions)
+      }
+    } catch {
+      case e: Throwable =>
+        val msg = s"Error creating/writing table: ${e.getMessage}"
+        throw new Exception(msg, e)
+    }
+    boolToDF(sparkSession, true)
+  }
+
+  def handlePlainCreateDDL(sqlParts: Array[String], dataSet: DataSet, options: Map[String, String], sparkSession: SparkSession): DataFrame = {
+
+    // Since select is not part of create statement it has to be full create statement
+    // We need to replace the pcatalog.storagetype.storagesystem.DB.Table with DB.Table
+    // So that we can pass the entire create statement as is to respective storage engines
+    val index = sqlParts.indexWhere(_.toLowerCase().contains(GimelConstants.UDC_STRING))
+
+    val datasetname = sqlParts(index)
+    val newSQL = sqlParts.map(element => {
+      if (element.toLowerCase().contains(GimelConstants.UDC_STRING + ".")) {
+        // we replace pcatalog.storagetype.storagesystem.DB.Table with DB.Table
+        element.split('.').tail.mkString(".").split('.').tail.mkString(".").split('.').tail.mkString(".")
+      }
+      else {
+        element
+      }
+    }
+    ).mkString(" ")
+    val newOptions = options ++ Map[String, String](GimelConstants.TABLE_SQL -> newSQL.toString, GimelConstants.CREATE_STATEMENT_IS_PROVIDED -> "true")
+    val result = dataSet.create(datasetname, newOptions)
+    boolToDF(sparkSession, result)
+
+  }
+
+  /** booltoDF will convert the boolean result to a dataframe
+    *
+    * @param spark  - sparksessionboolToDF
+    * @param result - boolean return from the create/drop/truncate methods
+    * @return
+    */
+  def boolToDFWithErrorString(spark: SparkSession, result: Boolean, addOnString: String): DataFrame = {
+    val resultStr = if (result) "success" else "failure"
+    import spark.implicits._
+    result match {
+      case false => throw new Exception(s"${addOnString}\n")
+      case _ => Seq(resultStr).toDF("Query Execution")
+    }
+  }
+
+  /** booltoDF will convert the boolean result to a dataframe
+    *
+    * @param spark  - sparksession
+    * @param result - boolean return from the create/drop/truncate methods
+    * @return
+    */
+  def boolToDF(spark: SparkSession, result: Boolean): DataFrame = {
+    val resultStr = if (result) "success" else "failure"
+    import spark.implicits._
+    Seq(resultStr).toDF("Query Execution")
+  }
+
+  /**
+    * From the create table SQL, parse the partitioned by clause and get all the partitions
+    *
+    * @param sql - Incoming sql
+    * @return - Array of Fields which has partition column name with data type hard coded as String for now as it is not going to be used elsewhere
+    */
+  def getPartitionsFields(sql: String): Array[com.paypal.gimel.common.catalog.Field] = {
+    val pattern = """^.+PARTITIONED BY \((.*?)\).+""".r
+    val pattern(partitions) = sql.toUpperCase()
+    var fieldsList: Array[com.paypal.gimel.common.catalog.Field] = Array[com.paypal.gimel.common.catalog.Field]()
+    val listParts = partitions.split(",")
+    listParts.map(parts => fieldsList :+= com.paypal.gimel.common.catalog.Field(parts, "String"))
+    fieldsList
+  }
+
+
+  /**
+    *
+    * Method to check in special checks in SQL string
+    *
+    * @param sql
+    * @return
+    */
+  def vulnerabilityCheck(sql: String): Unit = {
+
+    val checkFlag = if (sql.toUpperCase.contains(s"SET ${JdbcConstants.jdbcUserName}".toUpperCase)) {
+      true
+    }
+    else {
+      false
+    }
+
+    if (checkFlag) {
+      throw new Exception(
+        s"""
+           |SECURITY VIOLATION | Execution of this statement is not allowed: ${sql}
+        """.stripMargin)
+    }
+  }
+
 }

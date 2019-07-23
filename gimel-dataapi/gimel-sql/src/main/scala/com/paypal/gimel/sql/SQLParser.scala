@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 PayPal Inc.
+ * Copyright 2019 PayPal Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -33,24 +33,11 @@ object SQLParser {
     * @return - List of source table names
     */
 
+  @deprecated
   def getSourceTables(sql: String): ListBuffer[String] = {
     val parsDri = new ParseDriver()
     val ast_tree: ASTNode = parsDri.parse(sql)
     getSourceTables(ast_tree)
-  }
-
-  /**
-    * getTargetTables - Helper function to call a function which is recursive to get the Target table names from the AST
-    *
-    * @param sql to be parsed
-    * @return - List of target tables if any. If it is select only table, it returns a None.
-    */
-
-  def getTargetTables1(sql: String): Option[String] = {
-    val parsDri = new ParseDriver()
-    val ast_tree: ASTNode = parsDri.parse(sql)
-    val targetTableName = getTargetTables(ast_tree)
-    if (targetTableName.isEmpty) None else Some(targetTableName.head)
   }
 
 
