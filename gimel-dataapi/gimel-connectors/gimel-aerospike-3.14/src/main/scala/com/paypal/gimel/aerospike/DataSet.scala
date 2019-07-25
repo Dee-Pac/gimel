@@ -111,6 +111,39 @@ class DataSet(sparkSession: SparkSession) extends GimelDataSet(sparkSession: Spa
     }
   }
 
+  /**
+    *
+    * @param dataset   Name of the PCatalog Data Set
+    * @param dataSetProps
+    * * @return Boolean
+    */
+  override def create(dataset: String, dataSetProps: Map[String, Any]): Boolean = {
+    throw new Exception(s"DataSet create for aerospike currently not Supported")
+    true
+  }
+
+  /**
+    *
+    * @param dataset   Name of the PCatalog Data Set
+    * @param dataSetProps
+    * * @return Boolean
+    */
+  override def drop(dataset: String, dataSetProps: Map[String, Any]): Boolean = {
+    throw new Exception(s"DataSet drop for aerospike currently not Supported")
+    true
+  }
+
+  /**
+    *
+    * @param dataset   Name of the PCatalog Data Set
+    * @param dataSetProps
+    * * @return Boolean
+    */
+  override def truncate(dataset: String, dataSetProps: Map[String, Any]): Boolean = {
+    throw new Exception(s"DataSet truncate for aerospike currently not Supported")
+    true
+  }
+
   case class AerospikeDataSetException(private val message: String = "", private val cause: Throwable = None.orNull) extends Exception(message, cause)
 
 }

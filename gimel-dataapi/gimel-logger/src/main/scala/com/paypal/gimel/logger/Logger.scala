@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 PayPal Inc.
+ * Copyright 2019 PayPal Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -21,13 +21,11 @@ package com.paypal.gimel.logger
 
 import java.util.Calendar
 
-import com.paypal.gimel.logger.conf.LoggerConstants
-
 import scala.collection.JavaConverters._
 import scala.collection.mutable.Map
-import com.paypal.gimel.logging.impl.JSONSystemLogger
 
-import scala.util.parsing.json.JSONObject
+import com.paypal.gimel.logger.conf.LoggerConstants
+import com.paypal.gimel.logging.impl.JSONSystemLogger
 
 /**
   * com.paypal.gimel.logger.Logger SingleTon
@@ -77,7 +75,7 @@ class Logger(config: Any) extends Serializable {
   private val _APP_reference = config.toString
   private val logModes = Map(4 -> "INFO", 3 -> "DEBUG", 2 -> "WARN", 1 -> "ERROR")
   @volatile private var logMode = 4
-  val logger: Logger = Logger(this.getClass.getName)
+  lazy val logger: JSONSystemLogger = JSONSystemLogger.getInstance(getClass)
   private var logAudit = false
   var consolePrintEnabled = false
 

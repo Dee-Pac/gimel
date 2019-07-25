@@ -82,7 +82,7 @@ under the License.
                 <property>
                     <name>hortonworks-2.6.3.11-1_spark-2.2.0</name>
                 </property>
-                <activeByDefault>true</activeByDefault>
+                <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
                 <packaging.scope>compile</packaging.scope>
@@ -132,15 +132,21 @@ under the License.
                 <property>
                     <name>standalone</name>
                 </property>
-                <activeByDefault>false</activeByDefault>
+                <activeByDefault>true</activeByDefault>
             </activation>
             <properties>
                 <packaging.scope>compile</packaging.scope>
-                <scala.packaging.scope>compile</scala.packaging.scope>
+                <scala.packaging.scope>provided</scala.packaging.scope>
                 <spark.packaging.scope>compile</spark.packaging.scope>
-                <hadoop.packaging.scope>compile</hadoop.packaging.scope>
-                <hive.packaging.scope>compile</hive.packaging.scope>
+                <hadoop.packaging.scope>provided</hadoop.packaging.scope>
+                <hive.packaging.scope>provided</hive.packaging.scope>
                 <zookeeper.version>3.4.6</zookeeper.version>
+                <scala.version>2.11.8</scala.version>
+                <spark.binary.version>2.3</spark.binary.version>
+                <spark.version>2.3.0</spark.version>
+                <hadoop.version>2.7.4</hadoop.version>
+                <hive.version>1.2.1</hive.version>
+                <hbase.version>1.1.2</hbase.version>
                 <packaging.tag />
             </properties>
         </profile>

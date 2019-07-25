@@ -23,8 +23,10 @@ import java.sql.{Connection, PreparedStatement, ResultSet}
 import java.util.Properties
 
 import scala.collection.immutable.Map
+
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.types.{StructField, StructType}
+
 import com.paypal.gimel.common.catalog.{DataSetProperties, Field}
 import com.paypal.gimel.common.conf.GimelConstants
 import com.paypal.gimel.jdbc.conf.{JdbcConfigs, JdbcConstants}
@@ -823,24 +825,6 @@ object JdbcAuxiliaryUtilities {
     val createTableStatement = s"""CREATE TABLE ${dbTable} (${colList.dropRight(1)} ) """
     val columnStatement: PreparedStatement = con.prepareStatement(createTableStatement)
     columnStatement.execute()
-  }
-
-  /**
-    *
-    * @param url teradata url
-    * @return teradata system name
-    */
-  def getTeradataSystemName(url: String): String = {
-    val teradataSystem: String = if (url.toLowerCase.contains(JdbcConstants.teradataJaguarHostUrl)) {
-      JdbcConstants.teradataJaguarKey
-    }
-    else if (url.toLowerCase.contains(JdbcConstants.teradataSimbaHostUrl)) {
-      JdbcConstants.teradataSimbaKey
-    }
-    else {
-      JdbcConstants.teradataJackalKey
-    }
-    teradataSystem.toLowerCase
   }
 
   /**

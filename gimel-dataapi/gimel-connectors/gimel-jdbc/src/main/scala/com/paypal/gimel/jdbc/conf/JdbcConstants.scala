@@ -61,7 +61,13 @@ object JdbcConstants {
   val defaultInsertStrategy = "insert"
   val defaultFastLoadSessions = "12"
   val defaultWriteType = "BATCH"
+  val writeOperation = "write"
+  val defaultPartitionMethod = "coalesce"
+  val repartitionMethod = "repartition"
+  val coalesceMethod = "coalesce"
 
-
+  // partitions for Systems other than Teradata
+  val defaultJDBCReadPartitions = 100
+  val defaultJDBCWritePartitions = 100
 }
 

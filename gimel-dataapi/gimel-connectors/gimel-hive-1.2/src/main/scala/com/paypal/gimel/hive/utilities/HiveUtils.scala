@@ -23,6 +23,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 
 import scala.collection.immutable.Map
+
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.hadoop.hive.conf.HiveConf
 import org.apache.hadoop.hive.metastore.HiveMetaStoreClient

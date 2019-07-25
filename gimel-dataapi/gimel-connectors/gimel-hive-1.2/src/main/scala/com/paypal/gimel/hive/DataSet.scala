@@ -25,6 +25,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 import com.paypal.gimel.common.conf.GimelConstants
+import com.paypal.gimel.common.security.AuthHandler
 import com.paypal.gimel.datasetfactory.GimelDataSet
 import com.paypal.gimel.hive.utilities.HiveUtils
 import com.paypal.gimel.logger.Logger
@@ -103,6 +104,66 @@ class DataSet(sparkSession: SparkSession) extends GimelDataSet(sparkSession: Spa
       // todo Implementation for Write
       rdd
     }
+  }
+
+  /**
+    *
+    * @param dataset Name of the PCatalog Data Set
+    * @param dataSetProps
+    *                * @return Boolean
+    */
+  override def create(dataset: String, dataSetProps: Map[String, Any]): Boolean = {
+    def MethodName: String = new Exception().getStackTrace.apply(1).getMethodName
+
+    // Currently Gimel does not support impersonation for WRITE operations.
+    // This block throws exception when an attempt to write is made via user livy
+    if (AuthHandler.isAuthRequired(sparkSession)) {
+      throw new Exception(s"Operation [${MethodName}] is not supported through Gimel Thrift Server")
+    }
+
+    val hiveUtils = new HiveUtils
+    hiveUtils.create(dataset, dataSetProps, sparkSession)
+    true
+  }
+
+  /**
+    *
+    * @param dataset Name of the PCatalog Data Set
+    * @param dataSetProps
+    *                * @return Boolean
+    */
+  override def drop(dataset: String, dataSetProps: Map[String, Any]): Boolean = {
+    def MethodName: String = new Exception().getStackTrace.apply(1).getMethodName
+
+    // Currently Gimel does not support impersonation for WRITE operations.
+    // This block throws exception when an attempt to write is made via user livy
+    if (AuthHandler.isAuthRequired(sparkSession)) {
+      throw new Exception(s"Operation [${MethodName}] is not supported through Gimel Thrift Server")
+    }
+
+    val hiveUtils = new HiveUtils
+    hiveUtils.drop(dataset, dataSetProps, sparkSession)
+    true
+  }
+
+  /**
+    *
+    * @param dataset Name of the PCatalog Data Set
+    * @param dataSetProps
+    *                * @return Boolean
+    */
+  override def truncate(dataset: String, dataSetProps: Map[String, Any]): Boolean = {
+    def MethodName: String = new Exception().getStackTrace.apply(1).getMethodName
+
+    // Currently Gimel does not support impersonation for WRITE operations.
+    // This block throws exception when an attempt to write is made via user livy
+    if (AuthHandler.isAuthRequired(sparkSession)) {
+      throw new Exception(s"Operation [${MethodName}] is not supported through Gimel Thrift Server")
+    }
+
+    val hiveUtils = new HiveUtils
+    hiveUtils.truncate(dataset, dataSetProps, sparkSession)
+    true
   }
 
 }

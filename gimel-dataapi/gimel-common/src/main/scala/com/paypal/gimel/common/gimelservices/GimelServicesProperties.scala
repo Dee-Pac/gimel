@@ -23,6 +23,7 @@ import java.util.Properties
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
+
 import com.paypal.gimel.common.conf.{GimelConstants, PCatalogUrlConfigs}
 import com.paypal.gimel.logger.Logger
 

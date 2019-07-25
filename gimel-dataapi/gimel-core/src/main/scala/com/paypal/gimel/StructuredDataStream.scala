@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 PayPal Inc.
+ * Copyright 2017 PayPal Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -23,14 +23,15 @@ import scala.collection.immutable.Map
 import scala.language.implicitConversions
 import scala.util.{Success, Try}
 
-import org.apache.spark.{SparkContext}
+import org.apache.spark.SparkContext
 import org.apache.spark.annotation.Experimental
-import org.apache.spark.sql.{SparkSession}
+import org.apache.spark.sql.SparkSession
 
 import com.paypal.gimel.common.catalog.{CatalogProvider, DataSetProperties}
 import com.paypal.gimel.common.conf.{CatalogProviderConfigs, CatalogProviderConstants, GimelConstants}
+import com.paypal.gimel.common.utilities.Timer
 import com.paypal.gimel.datastreamfactory.{GimelStructuredDataStream, StructuredStreamingResult}
-import com.paypal.gimel.kafka.conf.{KafkaConstants}
+import com.paypal.gimel.kafka.conf.KafkaConstants
 import com.paypal.gimel.logger.Logger
 
 object StructuredDataStreamType extends Enumeration {
@@ -48,7 +49,13 @@ class StructuredDataStream(val sparkSession: SparkSession) {
   val sparkAppName: String = sparkContext.getConf.get(GimelConstants.SPARK_APP_NAME)
   val appTag: String = getAppTag(sparkContext)
   val logger = Logger()
+  logger.setSparkVersion(sparkSession.version)
   val latestStructuredDataStreamReader: Option[GimelStructuredDataStream] = None
+  var datasetSystemType: String = "KAFKA"
+  var additionalPropsToLog = scala.collection.mutable.Map[String, String]()
+
+  // get gimel timer object
+  val gimelTimer = Timer()
 
   import StructuredDataStreamUtils._
 
@@ -67,6 +74,7 @@ class StructuredDataStream(val sparkSession: SparkSession) {
   private def read(sourceType: DataStreamType.SystemType
                    , sourceName: String, props: Any): StructuredStreamingResult = {
     val propsMap: Map[String, Any] = getProps(props)
+
     val dataStream = StructuredDataStreamUtils.getStructuredDataStream(sparkSession, sourceType)
     dataStream.read(sourceName, propsMap)
   }
@@ -81,45 +89,103 @@ class StructuredDataStream(val sparkSession: SparkSession) {
   def read(dataSet: String, props: Any = Map[String, Any]()): StructuredStreamingResult = {
     def MethodName: String = new Exception().getStackTrace.apply(1).getMethodName
 
-    // Get catalog provider from run time hive context (1st Preference)
-    // if not available - check user props (2nd Preference)
-    // if not available - check Primary Provider of Catalog (Default)
-    val formattedProps: Map[String, Any] = getProps(props) ++
-      Map(CatalogProviderConfigs.CATALOG_PROVIDER ->
-        sparkSession.conf.get(CatalogProviderConfigs.CATALOG_PROVIDER,
-          CatalogProviderConstants.PRIMARY_CATALOG_PROVIDER))
-    val dataSetProperties: DataSetProperties =
-      CatalogProvider.getDataSetProperties(dataSet, formattedProps)
-    //    dataSetProperties.
-    //    val (systemType, hiveTableProps) = getSystemType(dataSet)
-    //    val systemType = getSystemType1(dataSetProperties)
-    val newProps: Map[String, Any] = getProps(props) ++ Map(
-      GimelConstants.DATASET_PROPS -> dataSetProperties
-      , GimelConstants.DATASET -> dataSet
-      , GimelConstants.RESOLVED_HIVE_TABLE -> resolveDataSetName(dataSet)
-      , GimelConstants.APP_TAG -> appTag)
+    // get start time
+    val startTime = gimelTimer.start.get
 
-    // Why are we doing this? Elastic Search Cannot Accept "." in keys
-    val dataSetProps = dataSetProperties.props.map { case (k, v) =>
-      k.replaceAllLiterally(".", "~") -> v
+    try {
+
+      // Get catalog provider from run time hive context (1st Preference)
+      // if not available - check user props (2nd Preference)
+      // if not available - check Primary Provider of Catalog (Default)
+      val formattedProps: Map[String, Any] = getProps(props) ++
+        Map(CatalogProviderConfigs.CATALOG_PROVIDER ->
+          sparkSession.conf.get(CatalogProviderConfigs.CATALOG_PROVIDER,
+            CatalogProviderConstants.PRIMARY_CATALOG_PROVIDER))
+      val dataSetProperties: DataSetProperties =
+        CatalogProvider.getDataSetProperties(dataSet, formattedProps)
+      //    dataSetProperties.
+      //    val (systemType, hiveTableProps) = getSystemType(dataSet)
+      //    val systemType = getSystemType1(dataSetProperties)
+      val newProps: Map[String, Any] = getProps(props) ++ Map(
+        GimelConstants.DATASET_PROPS -> dataSetProperties
+        , GimelConstants.DATASET -> dataSet
+        , GimelConstants.RESOLVED_HIVE_TABLE -> resolveDataSetName(dataSet)
+        , GimelConstants.APP_TAG -> appTag)
+
+      // Why are we doing this? Elastic Search Cannot Accept "." in keys
+      val dataSetProps = dataSetProperties.props.map { case (k, v) =>
+        k.replaceAllLiterally(".", "~") -> v
+      }
+
+      val propsToLog = scala.collection.mutable.Map[String, String]()
+      dataSetProps.foreach(x => propsToLog.put(x._1, x._2))
+
+      // update log variables to push logs
+      val endTime = gimelTimer.endTime.get
+      val executionTime: Double = gimelTimer.endWithMillSecRunTime
+
+
+      val data = this.read(DataStreamType.KAFKA, dataSet, newProps)
+
+      // post audit logs to KAFKA
+      logger.logApiAccess(sparkSession.sparkContext.getConf.getAppId
+        , sparkContext.getConf.get("spark.app.name")
+        , this.getClass.getName
+        , KafkaConstants.gimelAuditRunTypeStream
+        , getYarnClusterName()
+        , user
+        , appTag.replaceAllLiterally("/", "_")
+        , MethodName
+        , dataSet
+        , datasetSystemType
+        , ""
+        , additionalPropsToLog
+        , GimelConstants.SUCCESS
+        , GimelConstants.EMPTY_STRING
+        , GimelConstants.EMPTY_STRING
+        , startTime
+        , endTime
+        , executionTime
+      )
+
+      data
     }
+    catch {
+      case e: Throwable =>
 
-    val propsToLog = scala.collection.mutable.Map[String, String]()
-    dataSetProps.foreach(x => propsToLog.put(x._1, x._2))
+        logger.info(s"Pushing to logs:  Error Description\n dataset=${dataSet}\n method=${MethodName}\n Error: ${e.printStackTrace()}")
 
-    logger.logApiAccess(sparkContext.getConf.getAppId
-      , sparkContext.getConf.get("spark.app.name")
-      , this.getClass.getName
-      , KafkaConstants.gimelAuditRunTypeStream
-      , getYarnClusterName()
-      , user
-      , appTag.replaceAllLiterally("/", "_")
-      , MethodName
-      , newProps("resolvedHiveTable").toString
-      , "KAFKA"
-      , ""
-      , propsToLog)
-    this.read(DataStreamType.KAFKA, dataSet, newProps)
+        // update log variables to push logs
+        val endTime = System.currentTimeMillis()
+        val executionTime = endTime - startTime
+
+        // post audit logs to KAFKA
+        logger.logApiAccess(sparkSession.sparkContext.getConf.getAppId
+          , sparkContext.getConf.get("spark.app.name")
+          , this.getClass.getName
+          , KafkaConstants.gimelAuditRunTypeStream
+          , getYarnClusterName()
+          , user
+          , appTag.replaceAllLiterally("/", "_")
+          , MethodName
+          , dataSet
+          , datasetSystemType
+          , ""
+          , additionalPropsToLog
+          , GimelConstants.FAILURE
+          , e.toString + "\n" + e.getStackTraceString
+          , GimelConstants.UNKNOWN_STRING
+          , startTime
+          , endTime
+          , executionTime
+        )
+
+        // throw error to console
+        logger.throwError(e.toString)
+
+        val msg = s"Error in DataSet ${MethodName} Operation: ${e.printStackTrace()}"
+        throw new DataSetOperationException(msg, e)
+    }
   }
 
 }
@@ -129,6 +195,7 @@ class StructuredDataStream(val sparkSession: SparkSession) {
   */
 
 object StructuredDataStream {
+
   /**
     * Client calls for a DataStream with SparkContext,
     * we internally create an HiveContext & provide DataStream
@@ -173,11 +240,11 @@ private object StructuredDataStreamUtils {
     * @return PCatalogDataStream
     */
 
-  def getStructuredDataStream(sparkSession: SparkSession
-                    , sourceType: DataStreamType.SystemType): GimelStructuredDataStream = {
+  def getStructuredDataStream(sparkSession: SparkSession, sourceType: DataStreamType.SystemType): GimelStructuredDataStream = {
     sourceType match {
       case DataStreamType.KAFKA =>
         new com.paypal.gimel.kafka.StructuredDataStream(sparkSession)
+
     }
   }
 

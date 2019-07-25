@@ -37,7 +37,6 @@ import com.paypal.gimel.jdbc.exception._
 import com.paypal.gimel.jdbc.utilities.JdbcAuxiliaryUtilities.getJDBCSystem
 import com.paypal.gimel.logger.Logger
 
-
 /**
   * JDBC implementation internal to PCatalog
   * This implementation will be used to read from any JDBC data sources e.g. MYSQL, TERADATA

@@ -88,6 +88,42 @@ abstract class GimelDataSet(sparkSession: SparkSession) {
 
 
   /**
+    * Function create the dataset (Currently only in the respective storages and not in the pcatalog/hive meta data)
+    *
+    * @param dataset Name of the PCatalog Data Set
+    * @param dataSetProps
+    *                props is the way to set various additional parameters for read and write operations in DataSet class
+    *                    * @return Boolean
+    */
+  def create(dataset: String, dataSetProps: Map[String, Any] = Map.empty): Boolean
+
+
+  /**
+    * Function to drop the dataset (Currently only in the respective storages and not in the pcatalog/hive meta data)
+    *
+    * @param dataset Name of the PCatalog Data Set
+    * @param dataSetProps
+    *                props is the way to set various additional parameters for read and write operations in DataSet class
+    *
+    * @return Boolean
+    */
+  def drop(dataset: String, dataSetProps: Map[String, Any] = Map.empty): Boolean
+
+
+  /**
+    * Function to purge the records in the dataset
+    *
+    * @param dataset Name of the PCatalog Data Set
+    * @param dataSetProps
+    *                props is the way to set various additional parameters for read and write operations in DataSet class
+    *
+    * @return Boolean
+    */
+  def truncate(dataset: String, dataSetProps: Map[String, Any] = Map.empty): Boolean
+
+
+
+  /**
     * Supported Types of RDD, where RDD[T] is provided by client
     * Override and add supported types in implementations
     */

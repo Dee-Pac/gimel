@@ -35,7 +35,6 @@ import com.paypal.gimel.common.catalog.{CatalogProvider, DataSetProperties}
 import com.paypal.gimel.common.conf._
 import com.paypal.gimel.common.utilities.DataSetUtils.resolveDataSetName
 import com.paypal.gimel.common.utilities.RandomGenerator
-import com.paypal.gimel.datasetfactory.GimelDataSet
 import com.paypal.gimel.elasticsearch.conf.ElasticSearchConfigs
 import com.paypal.gimel.hbase.conf.HbaseConfigs
 import com.paypal.gimel.hbase.utilities.HBaseUtilities
@@ -743,7 +742,6 @@ object GimelQueryUtils {
 
   /**
     * Checks whether the sql is of drop table/view pattern and checks whether the table/view is a temp table
-    * This will help to take a path to whether to go in livy session or normal gsql session
     *
     * @param sql          - incoming sql
     * @param sparkSession - spark session

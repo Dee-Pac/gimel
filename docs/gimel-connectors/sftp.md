@@ -38,7 +38,7 @@
 
 ## Create Hive Table Catalog
 
-The following hive table points to DropZone (SFTP server)
+The following hive table points to a fileserver (SFTP server)
 
 ```sql
   CREATE EXTERNAL TABLE pcatalog.sftp_drop_zone (
@@ -52,7 +52,7 @@ The following hive table points to DropZone (SFTP server)
       LOCATION
         'hdfs://cluster1/tmp/pcatalog/sftp_drop_zone'
       TBLPROPERTIES (
-        'gimel.sftp.host'='dropzone.paypalcorp.com',
+        'gimel.sftp.host'='sftp_host',
         'gimel.storage.type'='SFTP')
 ```
 

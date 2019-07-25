@@ -26,6 +26,7 @@ import javax.net.ssl.HttpsURLConnection
 
 import scala.collection.immutable.{Map, Seq}
 import scala.io.Source.fromInputStream
+
 import org.apache.commons.lang3.StringEscapeUtils
 import org.apache.http.client.methods.{CloseableHttpResponse, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
@@ -232,7 +233,7 @@ class GimelServiceUtilities(userProps: Map[String, String] = Map[String, String]
   /**
     * Gets the Cluster Details for a Given Cluster Name
     *
-    * @param name Name of Cluster -- Sample : horton
+    * @param name Name of Cluster -- Sample : cluster1
     * @return ClusterInfo
     */
   def getClusterInfo(name: String): ClusterInfo = {

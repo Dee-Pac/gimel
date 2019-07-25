@@ -19,6 +19,7 @@
 
 package com.paypal.gimel.jdbc
 
+import scala.collection.immutable.Map
 import scala.reflect.runtime.universe
 
 import org.apache.spark.rdd.RDD
@@ -26,6 +27,7 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 
 import com.paypal.gimel.common.conf.GimelConstants
 import com.paypal.gimel.datasetfactory.GimelDataSet
+import com.paypal.gimel.jdbc.utilities.JdbcAuxiliaryUtilities._
 import com.paypal.gimel.jdbc.utilities.JDBCUtilities
 import com.paypal.gimel.logger.Logger
 
@@ -107,6 +109,66 @@ class DataSet(sparkSession: SparkSession) extends GimelDataSet(sparkSession: Spa
   override def write[T: universe.TypeTag](dataset: String, anyRDD: RDD[T], dataSetProps: Map[String, Any]): RDD[T] = {
     // TODO
     anyRDD
+  }
+
+  /**
+    * Creates teradata table
+    *
+    * `dataSetProps` contains additional parameters like column names, types and other system params
+    *
+    * @param dataset      Name of the data set
+    * @param dataSetProps The given properties
+    * @return Boolean
+    */
+
+  override def create(dataset: String, dataSetProps: Map[String, Any]): Boolean = {
+    if (dataSetProps.isEmpty) {
+      throw new DataSetOperationException("Props Cannot Be Empty!")
+    }
+    val dataSet = dataSetProps(GimelConstants.RESOLVED_HIVE_TABLE).toString
+    val dsetProperties: Map[String, Any] = getDataSetProperties(dataSetProps)
+    jdbcUtilities.create(dataSet, dataSetProps)
+    true
+  }
+
+  /**
+    * drops teradata table
+    *
+    * `dataSetProps` contains additional parameters like column names, types and other system params
+    *
+    * @param dataset      Name of the data set
+    * @param dataSetProps The given properties
+    * @return Boolean
+    */
+
+  override def drop(dataset: String, dataSetProps: Map[String, Any]): Boolean = {
+    if (dataSetProps.isEmpty) {
+      throw new DataSetOperationException("Props Cannot Be Empty!")
+    }
+    val dataSet = dataSetProps(GimelConstants.RESOLVED_HIVE_TABLE).toString
+    val dsetProperties: Map[String, Any] = getDataSetProperties(dataSetProps)
+    jdbcUtilities.drop(dataSet, dsetProperties ++ dataSetProps)
+    true
+  }
+
+  /**
+    * purges teradata table
+    *
+    * `dataSetProps` contains additional parameters like column names, types and other system params
+    *
+    * @param dataset      Name of the data set
+    * @param dataSetProps The given properties
+    * @return Boolean
+    */
+
+  override def truncate(dataset: String, dataSetProps: Map[String, Any]): Boolean = {
+    if (dataSetProps.isEmpty) {
+      throw new DataSetOperationException("Props Cannot Be Empty!")
+    }
+    val dataSet = dataSetProps(GimelConstants.RESOLVED_HIVE_TABLE).toString
+    val dsetProperties: Map[String, Any] = getDataSetProperties(dataSetProps)
+    jdbcUtilities.truncate(dataSet, dsetProperties ++ dataSetProps)
+    true
   }
 }
 

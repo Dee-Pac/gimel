@@ -88,11 +88,7 @@ class JDBCConnectionUtility(sparkSession: SparkSession, dataSetProps: Map[String
   val jdbcSystem = getJDBCSystem(url)
 
   // get actual JDBC user
-  var jdbcUser: String = if (sparkSession.sparkContext.sparkUser.equalsIgnoreCase(GimelConstants.GTS_DEFAULT_USER)) {
-    sparkSession.conf.get(JdbcConstants.jdbcUserName)
-  } else {
-    JDBCCommons.getJdbcUser(dataSetProps, sparkSession)
-  }
+  var jdbcUser: String = JDBCCommons.getJdbcUser(dataSetProps, sparkSession)
 
   // Get username and password
   private val (userName, password) = authUtilities.getJDBCCredentials(url, dataSetProps)
@@ -162,7 +158,7 @@ class JDBCConnectionUtility(sparkSession: SparkSession, dataSetProps: Map[String
             )
           }
           // check for non-GTS queries
-          // If sparkUser != livy AND jdbcUser != sparkUser, then throw exception.
+          // If jdbcUser != sparkUser, then throw exception.
           if (!jdbcUser.equalsIgnoreCase(sparkUser)) {
             throw new Exception(
               s"""

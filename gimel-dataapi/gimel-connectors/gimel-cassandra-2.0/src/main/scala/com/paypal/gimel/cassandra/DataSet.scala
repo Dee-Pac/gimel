@@ -112,6 +112,39 @@ class DataSet(sparkSession: SparkSession) extends GimelDataSet(sparkSession: Spa
     val msg = s"""Invalid RDD Type. Supported Types : ${supportedTypesOfRDD.mkString(" | ")}"""
     throw new UnsupportedOperationException(msg)
   }
+
+  /**
+    *
+    * @param dataset   Name of the PCatalog Data Set
+    * @param dataSetProps
+    * * @return Boolean
+    */
+  override def create(dataset: String, dataSetProps: Map[String, Any]): Boolean = {
+    throw new Exception(s"DataSet create for cassandra currently not Supported")
+    true
+  }
+
+  /**
+    *
+    * @param dataset   Name of the PCatalog Data Set
+    * @param dataSetProps
+    * * @return Boolean
+    */
+  override def drop(dataset: String, dataSetProps: Map[String, Any]): Boolean = {
+    throw new Exception(s"DataSet drop for cassandra currently not Supported")
+    true
+  }
+
+  /**
+    *
+    * @param dataset   Name of the PCatalog Data Set
+    * @param dataSetProps
+    * * @return Boolean
+    */
+  override def truncate(dataset: String, dataSetProps: Map[String, Any]): Boolean = {
+    throw new Exception(s"DataSet truncate for cassandra currently not Supported")
+    true
+  }
 }
 
 /**

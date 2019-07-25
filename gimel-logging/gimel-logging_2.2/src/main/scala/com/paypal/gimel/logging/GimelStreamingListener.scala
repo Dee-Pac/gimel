@@ -17,15 +17,15 @@
 
 package com.paypal.gimel.logging
 
+
 import java.util.{Date, Map => JMap}
 
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
 
 import org.apache.spark._
+import org.apache.spark.internal.Logging
 import org.apache.spark.streaming.scheduler._
-import org.json4s.DefaultFormats
-
 import org.json4s.DefaultFormats
 
 /**

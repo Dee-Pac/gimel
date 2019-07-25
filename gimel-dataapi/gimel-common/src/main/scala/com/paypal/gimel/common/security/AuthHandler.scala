@@ -41,8 +41,7 @@ object AuthHandler {
   val logger = Logger(this.getClass)
 
   /**
-    * This block allows entry for impersonation only if user is livy, in all other cases impersonation is not required.
-    * Also, if GTS is started with spark.gimel.gts.impersonation.enabled=false, then this whole block must not execute.
+    * if GTS is started with spark.gimel.gts.impersonation.enabled=false, then this whole block must not execute.
     *
     * @param sparkSession Spark Session
     * @return Boolean, true indicates auth is required.
@@ -77,7 +76,7 @@ object AuthHandler {
     val batchUsers = new ListBuffer[String]()
     val groupUsers = new ListBuffer[String]()
     logger.info(" authenticateRangerLocationPolicy args" + currentUser + ":" + operation + ":" + hdfsLocation + ":" + dataSet + ":" + clusterName + ":" + clusterNameNode)
-    // The policies will not have the hdfs and cluster like hdfs://horton/table...
+    // The policies will not have the hdfs and cluster like hdfs://cluster1/table...
     // It will have like /sys/user/tablename
     // So we need to strip the hdfs cluster name from it to send the correct location so that REST call won't fail.
 
@@ -119,9 +118,7 @@ object AuthHandler {
            |
            |To gain access to the dataset,
            |- You have to be a part of one of these accounts [${accounts}]
-           |- Or, have one of the following roles [${roles}]
-           |
-           |Please use the following link for access requests : https://identityhub.paypalcorp.com/dashboard .
+           |- Or, have one of the following roles [${roles}].
            |""".stripMargin
 
       logger.info(errorMessage)

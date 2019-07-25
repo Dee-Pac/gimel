@@ -98,6 +98,9 @@ object GimelConstants {
   val STORAGE_TYPE_HBASE: String = "hbase"
 
   // TERA DATA RELATED CONSTANTS
+  val TERA_DATA_TABLE_TYPE_COLUMN: String = "table_type"
+  val TERA_DATA_INDEX_NAME_COLUMN: String = "index_name"
+  val TERA_DATA_INDEX_COLUMN: String = "index_column"
   val STORAGE_TYPE_JDBC = "JDBC"
 
   // Ranger

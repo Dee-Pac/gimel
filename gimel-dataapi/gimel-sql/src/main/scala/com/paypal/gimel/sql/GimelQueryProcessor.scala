@@ -32,7 +32,6 @@ import com.paypal.gimel.common.catalog.{CatalogProvider, DataSetProperties}
 import com.paypal.gimel.common.conf.{CatalogProviderConfigs, GimelConstants}
 import com.paypal.gimel.common.security.AuthHandler
 import com.paypal.gimel.common.utilities.Timer
-import com.paypal.gimel.datasetfactory.GimelDataSet
 import com.paypal.gimel.datastreamfactory.{StreamingResult, WrappedData}
 import com.paypal.gimel.jdbc.conf.JdbcConstants
 import com.paypal.gimel.kafka.conf.{KafkaConfigs, KafkaConstants}

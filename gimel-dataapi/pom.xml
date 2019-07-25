@@ -63,7 +63,7 @@ under the License.
         <elasticsearch.version>5.6.4</elasticsearch.version>
         <gimel.version>0.6.0</gimel.version>
         <guava.version>16.0</guava.version>
-        <hadoop.version>2.7.3</hadoop.version>
+        <hadoop.version>2.7.4</hadoop.version>
         <hbase.version>1.2.0</hbase.version>
         <hive.version>1.2.1000.2.4.2.12-1</hive.version>
         <hortonworks.shc.version>1.1.2</hortonworks.shc.version>

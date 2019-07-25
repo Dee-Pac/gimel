@@ -22,6 +22,7 @@ package com.paypal.gimel.common.catalog
 import scala.collection.JavaConverters._
 import scala.collection.immutable.Map
 import scala.language.implicitConversions
+
 import org.apache.hadoop.hive.conf.HiveConf
 import org.apache.hadoop.hive.metastore.HiveMetaStoreClient
 import org.apache.hadoop.hive.metastore.api.Table
