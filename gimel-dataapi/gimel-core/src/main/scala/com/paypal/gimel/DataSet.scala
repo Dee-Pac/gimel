@@ -106,7 +106,7 @@ class DataSet(val sparkSession: SparkSession) {
       formattedProps ++ Map(GimelConstants.SPARK_APP_NAME -> sparkSession.conf.get(GimelConstants.SPARK_APP_NAME))
 
       val dataSetProperties: DataSetProperties =
-        CatalogProvider.getDataSetProperties(dataSet, formattedProps)
+        CatalogProvider().getDataSetProperties(dataSet, formattedProps)
       //    dataSetProperties.
       //    val (systemType, hiveTableProps) = getSystemType(dataSet)
       val systemType = getSystemType(dataSetProperties)
@@ -223,7 +223,7 @@ class DataSet(val sparkSession: SparkSession) {
         formattedProps ++ Map(CatalogProviderConfigs.CATALOG_PROVIDER -> CatalogProviderConstants.HIVE_PROVIDER)
       }
       val dataSetProperties: DataSetProperties =
-        CatalogProvider.getDataSetProperties(dataSet, formattedProps)
+        CatalogProvider().getDataSetProperties(dataSet, formattedProps)
 
       formattedProps ++ Map(GimelConstants.SPARK_APP_NAME -> sparkSession.conf.get(GimelConstants.SPARK_APP_NAME))
 
@@ -337,7 +337,7 @@ class DataSet(val sparkSession: SparkSession) {
           sparkSession.conf.get(CatalogProviderConfigs.CATALOG_PROVIDER,
             CatalogProviderConstants.PRIMARY_CATALOG_PROVIDER))
       val dataSetProperties: DataSetProperties =
-        CatalogProvider.getDataSetProperties(dataSet, formattedProps)
+        CatalogProvider().getDataSetProperties(dataSet, formattedProps)
       //    dataSetProperties.
       //    val (systemType, hiveTableProps) = getSystemType(dataSet)
       val systemType = getSystemType(dataSetProperties)
@@ -519,7 +519,7 @@ class DataSet(val sparkSession: SparkSession) {
       }
 
       val datasetProps: DataSetProperties =
-        CatalogProvider.getDataSetProperties(dataSet, formattedProps)
+        CatalogProvider().getDataSetProperties(dataSet, formattedProps)
       val systemType = getSystemType(datasetProps)
       val newProps: Map[String, Any] = getProps(props) ++ Map(
         GimelConstants.DATASET_PROPS -> datasetProps
@@ -646,7 +646,7 @@ class DataSet(val sparkSession: SparkSession) {
       }
       // val resolvedSourceTable = resolveDataSetName(dataSet)
       val datasetProps: DataSetProperties =
-      CatalogProvider.getDataSetProperties(dataSet, formattedProps)
+      CatalogProvider().getDataSetProperties(dataSet, formattedProps)
       val systemType = getSystemType(datasetProps)
       val newProps: Map[String, Any] = getProps(props) ++ Map(
         GimelConstants.DATASET_PROPS -> datasetProps
@@ -770,7 +770,7 @@ class DataSet(val sparkSession: SparkSession) {
         case _ => None
       }
       val datasetProps: DataSetProperties =
-        CatalogProvider.getDataSetProperties(dataSet, formattedProps)
+        CatalogProvider().getDataSetProperties(dataSet, formattedProps)
       val systemType = getSystemType(datasetProps)
       val newProps: Map[String, Any] = getProps(props) ++ Map(
         GimelConstants.DATASET_PROPS -> datasetProps

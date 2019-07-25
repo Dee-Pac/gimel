@@ -359,7 +359,7 @@ object GimelQueryProcessor {
       val sourceTables = getTablesFrom(sql)
       val kafkaTables = sourceTables.filter { table =>
         val dataSetProperties: DataSetProperties =
-          CatalogProvider.getDataSetProperties(table, options)
+          CatalogProvider().getDataSetProperties(table, options)
         DataSetUtils.getSystemType(dataSetProperties) == DataSetType.KAFKA
       }
       if (kafkaTables.isEmpty) {
@@ -641,7 +641,7 @@ If mode=intelligent, then Restarting will result in Batch Mode Execution first f
       val sourceTables = getTablesFrom(sql)
       val kafkaTables = sourceTables.filter { table =>
         val dataSetProperties: DataSetProperties =
-          CatalogProvider.getDataSetProperties(table)
+          CatalogProvider().getDataSetProperties(table)
         DataSetUtils.getSystemType(dataSetProperties) == DataSetType.KAFKA
       }
       val data = if (kafkaTables.isEmpty) {
@@ -885,7 +885,7 @@ If mode=intelligent, then Restarting will result in Batch Mode Execution first f
       val sourceTables = getTablesFrom(sql)
       val kafkaTables = sourceTables.filter { table =>
         val dataSetProperties: DataSetProperties =
-          CatalogProvider.getDataSetProperties(table)
+          CatalogProvider().getDataSetProperties(table)
         DataSetUtils.getSystemType(dataSetProperties) == DataSetType.KAFKA
       }
       if (kafkaTables.isEmpty) {

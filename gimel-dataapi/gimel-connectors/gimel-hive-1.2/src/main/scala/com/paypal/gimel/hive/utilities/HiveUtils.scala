@@ -258,11 +258,11 @@ class HiveUtils {
     val catalogProvider = dataSetProps.get(CatalogProviderConfigs.CATALOG_PROVIDER).get.toString
     val hiveDataSetName = actualProps.props(GimelConstants.HIVE_DATABASE_NAME) + "." + actualProps.props(GimelConstants.HIVE_TABLE_NAME)
     val uniqueID = getUniqueID(sparkSession.sparkContext.sparkUser, GimelConstants.DDL_DELETE_STRING, hiveDataSetName)
-    val tableLocation = com.paypal.gimel.common.catalog.CatalogProvider.getHiveTable(hiveDataSetName).getSd.getLocation
+    val tableLocation = com.paypal.gimel.common.catalog.CatalogProvider().getHiveTable(hiveDataSetName).getSd.getLocation
     val dfShowCreate = sparkSession.sql(s"""show create table ${hiveDataSetName}""")
     val originalCreateStatement = dfShowCreate.select("createtab_stmt").rdd.map(r => r(0)).collect()(0).toString
 
-    val isManagedTable = com.paypal.gimel.common.catalog.CatalogProvider.getHiveTable(hiveDataSetName).getTableType match {
+    val isManagedTable = com.paypal.gimel.common.catalog.CatalogProvider().getHiveTable(hiveDataSetName).getTableType match {
       case "MANAGED_TABLE" => true
       case _ => false
     }
@@ -329,8 +329,8 @@ class HiveUtils {
     val catalogProvider = dataSetProps.get(CatalogProviderConfigs.CATALOG_PROVIDER).get.toString
     val hiveDataSetName = actualProps.props(GimelConstants.HIVE_DATABASE_NAME) + "." + actualProps.props(GimelConstants.HIVE_TABLE_NAME)
     val uniqueID = getUniqueID(sparkSession.sparkContext.sparkUser, GimelConstants.DDL_DROP_STRING, hiveDataSetName)
-    val tableLocation = com.paypal.gimel.common.catalog.CatalogProvider.getHiveTable(hiveDataSetName).getSd.getLocation
-    val isManagedTable = com.paypal.gimel.common.catalog.CatalogProvider.getHiveTable(hiveDataSetName).getTableType match {
+    val tableLocation = com.paypal.gimel.common.catalog.CatalogProvider().getHiveTable(hiveDataSetName).getSd.getLocation
+    val isManagedTable = com.paypal.gimel.common.catalog.CatalogProvider().getHiveTable(hiveDataSetName).getTableType match {
       case "MANAGED_TABLE" => true
       case _ => false
     }
@@ -403,7 +403,7 @@ class HiveUtils {
       val hdfsLocation = isCataloguedTable match {
         case "true" =>
           val hiveDataSetName = datasetProps.props(GimelConstants.HIVE_DATABASE_NAME) + "." + datasetProps.props(GimelConstants.HIVE_TABLE_NAME)
-          CatalogProvider.getHiveTable(hiveDataSetName).getSd.getLocation
+          CatalogProvider().getHiveTable(hiveDataSetName).getSd.getLocation
         case _ => datasetProps.props.getOrElse(HiveConfigs.dataLocation, datasetProps.props.get(CatalogProviderConstants.PROPS_LOCATION).get)
       }
       val clusterNameNode = datasetProps.props.getOrElse(GimelConstants.hdfsNameNodeKey, "")

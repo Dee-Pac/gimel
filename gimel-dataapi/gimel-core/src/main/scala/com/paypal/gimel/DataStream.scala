@@ -100,7 +100,7 @@ class DataStream(val streamingContext: StreamingContext) {
         Map(CatalogProviderConfigs.CATALOG_PROVIDER -> CatalogProviderConstants.PRIMARY_CATALOG_PROVIDER) ++
           getProps(props)
       val dataSetProperties: DataSetProperties =
-        CatalogProvider.getDataSetProperties(dataSet, formattedProps)
+        CatalogProvider().getDataSetProperties(dataSet, formattedProps)
       //    dataSetProperties.
       //    val (systemType, hiveTableProps) = getSystemType(dataSet)
       //    val systemType = getSystemType1(dataSetProperties)

@@ -102,7 +102,7 @@ class StructuredDataStream(val sparkSession: SparkSession) {
           sparkSession.conf.get(CatalogProviderConfigs.CATALOG_PROVIDER,
             CatalogProviderConstants.PRIMARY_CATALOG_PROVIDER))
       val dataSetProperties: DataSetProperties =
-        CatalogProvider.getDataSetProperties(dataSet, formattedProps)
+        CatalogProvider().getDataSetProperties(dataSet, formattedProps)
       //    dataSetProperties.
       //    val (systemType, hiveTableProps) = getSystemType(dataSet)
       //    val systemType = getSystemType1(dataSetProperties)

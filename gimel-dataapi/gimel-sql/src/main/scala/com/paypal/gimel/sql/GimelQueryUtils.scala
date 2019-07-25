@@ -553,7 +553,7 @@ object GimelQueryUtils {
           sparkSession.conf.get(CatalogProviderConfigs.CATALOG_PROVIDER,
             CatalogProviderConstants.PRIMARY_CATALOG_PROVIDER))
         val dataSetProperties: DataSetProperties =
-          CatalogProvider.getDataSetProperties(resolvedSourceTable, formattedProps)
+          CatalogProvider().getDataSetProperties(resolvedSourceTable, formattedProps)
         dataSetProperties.datasetType == GimelConstants.STORAGE_TYPE_JDBC & userFlag
       }.toString
     }
@@ -623,7 +623,7 @@ object GimelQueryUtils {
             sparkSession.conf.get(CatalogProviderConfigs.CATALOG_PROVIDER,
               CatalogProviderConstants.PRIMARY_CATALOG_PROVIDER))
           val dataSetProperties: DataSetProperties =
-            CatalogProvider.getDataSetProperties(resolvedSourceTable, formattedProps)
+            CatalogProvider().getDataSetProperties(resolvedSourceTable, formattedProps)
           val hiveTableParams = dataSetProperties.props
           val jdbcTableName: String = hiveTableParams(JdbcConfigs.jdbcInputTableNameKey)
           logger.info(s"JDBC input table name : ${jdbcTableName}")
@@ -699,7 +699,7 @@ object GimelQueryUtils {
       formattedProps ++ Map(CatalogProviderConfigs.CATALOG_PROVIDER -> CatalogProviderConstants.HIVE_PROVIDER)
     }
 
-    val dataSetProperties: DataSetProperties = CatalogProvider.getDataSetProperties(insertTable, options)
+    val dataSetProperties: DataSetProperties = CatalogProvider().getDataSetProperties(insertTable, options)
     logger.info("dataSetProperties  ==> " + dataSetProperties.toString())
     val systemType: _root_.com.paypal.gimel.DataSetType.Value = com.paypal.gimel.DataSetUtils.getSystemType(dataSetProperties)
     systemType
@@ -969,7 +969,7 @@ object GimelQueryUtils {
           case true =>
           case _ =>
         }
-        val dataSetProperties: DataSetProperties = CatalogProvider.getDataSetProperties(dest.get)
+        val dataSetProperties: DataSetProperties = CatalogProvider().getDataSetProperties(dest.get)
         //        val dataSetProperties = GimelServiceUtilities().getDataSetProperties(dest.get)
         dataSetProperties.datasetType.toString match {
           case "HIVE" | "NONE" => {
@@ -1260,7 +1260,7 @@ object GimelQueryUtils {
       formattedProps ++ Map(CatalogProviderConfigs.CATALOG_PROVIDER -> CatalogProviderConstants.HIVE_PROVIDER)
     }
 
-    val dataSetProperties: DataSetProperties = CatalogProvider.getDataSetProperties(dataSet, options)
+    val dataSetProperties: DataSetProperties = CatalogProvider().getDataSetProperties(dataSet, options)
     logger.info("dataSetProperties  ==> " + dataSetProperties.toString())
     val systemType = com.paypal.gimel.DataSetUtils.getSystemType(dataSetProperties)
 
@@ -1272,7 +1272,7 @@ object GimelQueryUtils {
     systemType match {
       case com.paypal.gimel.DataSetType.HIVE =>
         val hiveTableName = (dataSetProperties.props(GimelConstants.HIVE_DATABASE_NAME) + "." + dataSetProperties.props(GimelConstants.HIVE_TABLE_NAME))
-        val hiveTableObject = CatalogProvider.getHiveTable(hiveTableName)
+        val hiveTableObject = CatalogProvider().getHiveTable(hiveTableName)
         val tableType = hiveTableObject.getTableType
         if (tableType == "VIRTUAL_VIEW") {
           logger.info("Seems we are querying a view.")

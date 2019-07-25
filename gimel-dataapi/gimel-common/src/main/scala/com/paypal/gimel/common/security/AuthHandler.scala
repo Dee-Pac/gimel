@@ -240,7 +240,7 @@ object AuthHandler {
       """.stripMargin
     )
     val allPolicies: Map[String, Seq[PolicyDetails]] = getAllPolicies(currentUser, operation, database, table, hdfsLocation, clusterName, clusterNameNode, dataSet)
-    val hiveTableObject = CatalogProvider.getHiveTable(s"$database.$table")
+    val hiveTableObject = CatalogProvider().getHiveTable(s"$database.$table")
     val tableType = hiveTableObject.getTableType
 
     authenticateHiveTablePolicy(currentUser, operation, database, table, dataSet, clusterName, allPolicies)

@@ -134,7 +134,7 @@ object KafkaUtilities {
     val dataSet = props(GimelConstants.DATASET)
     //    import com.paypal.gimel.DataSetUtils._
     // This is the DataSet Properties
-    val datasetProps = CatalogProvider.getDataSetProperties(dataSet)
+    val datasetProps = CatalogProvider().getDataSetProperties(dataSet)
     logger.info(
       s"""DataSet Props -->
           |${datasetProps.props.map(x => s"${x._1} --> ${x._2}").mkString("\n")}""".stripMargin)

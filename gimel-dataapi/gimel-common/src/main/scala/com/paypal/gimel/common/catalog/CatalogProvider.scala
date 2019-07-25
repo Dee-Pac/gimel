@@ -46,7 +46,11 @@ case class DataSetProperties(datasetType: String,
                              props: Map[String, String]
                             )
 
-object CatalogProvider {
+object CatalogProvider{
+  def apply(): CatalogProvider1 = new CatalogProvider1()
+}
+
+class CatalogProvider1() {
 
   val logger = Logger(this.getClass.getName)
   val servUtils = com.paypal.gimel.common.gimelservices.GimelServiceUtilities()
