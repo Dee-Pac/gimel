@@ -83,8 +83,8 @@ under the License.
         <tranquility.version>0.8.2</tranquility.version>
         <mockito.version>2.13.0</mockito.version>
         <qubole.hive.jdbc.version>0.0.7</qubole.hive.jdbc.version>
-        <spark.binary.version>2.2</spark.binary.version>
-        <spark.version>2.2.0</spark.version>
+        <spark.binary.version>2.3</spark.binary.version>
+        <spark.version>2.3.0</spark.version>
         <spray.json.version>1.3.3</spray.json.version>
         <teradata.version>16.20.00.06</teradata.version>
         <twitter.zookeeper.version>2.0.0_fs-b</twitter.zookeeper.version>

@@ -52,6 +52,30 @@ under the License.
             <name>Confluent</name>
             <url>https://packages.confluent.io/maven/</url>
         </repository>
+        <repository>
+            <id>raptor.public</id>
+            <url>https://paypalcentral.es.paypalcorp.com/nexus/content/groups/public</url>
+        </repository>
+        <repository>
+            <id>raptor.hortonworks</id>
+            <url>https://engineering.paypalcorp.com/paypalcentral/content/repositories/thirdparty</url>
+        </repository>
+        <repository>
+            <id>raptor.releases</id>
+            <url>https://paypalcentral.es.paypalcorp.com/nexus/content/repositories/releases/</url>
+        </repository>
+        <repository>
+            <id>raptor.central</id>
+            <url>https://paypalcentral.es.paypalcorp.com/nexus/content/repositories/central/</url>
+        </repository>
+        <repository>
+            <id>raptor.snapshots</id>
+            <url>https://paypalcentral.es.paypalcorp.com/nexus/content/repositories/snapshots/</url>
+        </repository>
+        <repository>
+            <id>raptor.thirdparty</id>
+            <url>https://paypalcentral.es.paypalcorp.com/nexus/content/repositories/thirdparty</url>
+        </repository>
 	<repository>
 	    <id>repository.janrain</id>
 	    <url>https://repository-janrain.forge.cloudbees.com/release/</url>
@@ -136,7 +160,7 @@ under the License.
             </activation>
             <properties>
                 <packaging.scope>compile</packaging.scope>
-                <scala.packaging.scope>provided</scala.packaging.scope>
+                <scala.packaging.scope>compile</scala.packaging.scope>
                 <spark.packaging.scope>compile</spark.packaging.scope>
                 <hadoop.packaging.scope>provided</hadoop.packaging.scope>
                 <hive.packaging.scope>provided</hive.packaging.scope>

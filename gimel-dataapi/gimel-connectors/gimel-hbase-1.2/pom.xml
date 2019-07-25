@@ -40,7 +40,7 @@ under the License.
     <dependency>
       <groupId>com.hortonworks</groupId>
       <artifactId>shc-core</artifactId>
-      <version>${hortonworks.shc.version}-${spark.binary.version}-s_${scala.binary.version}</version>
+      <version>${hortonworks.shc.version}-${spark.binary.version}-s_${scala.binary.version}-SNAPSHOT</version>
       <scope>${packaging.scope}</scope>
     </dependency>
     <dependency>
