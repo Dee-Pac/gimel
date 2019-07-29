@@ -29,7 +29,7 @@ import org.apache.spark.sql.SparkSession
 import com.paypal.gimel.common.conf.GimelConstants
 import com.paypal.gimel.jdbc.conf.{JdbcConfigs, JdbcConstants}
 import com.paypal.gimel.jdbc.exception.JDBCConnectionError
-import com.paypal.gimel.jdbc.utilities.JdbcAuxiliaryUtilities.getJDBCSystem
+import com.paypal.gimel.jdbc.utilities.JdbcAuxiliaryUtilities1.getJDBCSystem
 
 /**
   * This object defines the connection object required any time during Sparksession
@@ -82,7 +82,7 @@ class JDBCConnectionUtility(sparkSession: SparkSession, dataSetProps: Map[String
   private val authUtilities: JDBCAuthUtilities = JDBCAuthUtilities(sparkSession)
 
   // get url
-  val url = JdbcAuxiliaryUtilities.getJdbcUrl(dataSetProps)
+  val url = JdbcAuxiliaryUtilities1.getJdbcUrl(dataSetProps)
 
   // get JDBC system type
   val jdbcSystem = getJDBCSystem(url)
@@ -185,7 +185,7 @@ class JDBCConnectionUtility(sparkSession: SparkSession, dataSetProps: Map[String
     connectionProperties.put("password", s"${password}")
 
     // set driver class
-    val driverClass = JdbcAuxiliaryUtilities.getJdbcStorageOptions(dataSetProps)(JdbcConfigs.jdbcDriverClassKey)
+    val driverClass = JdbcAuxiliaryUtilities1.getJdbcStorageOptions(dataSetProps)(JdbcConfigs.jdbcDriverClassKey)
     connectionProperties.setProperty("Driver", driverClass)
 
     connectionProperties

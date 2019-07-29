@@ -32,8 +32,11 @@ import com.paypal.gimel.common.conf.GimelConstants
 import com.paypal.gimel.jdbc.conf.{JdbcConfigs, JdbcConstants}
 import com.paypal.gimel.logger.Logger
 
-object JdbcAuxiliaryUtilities {
 
+
+object JdbcAuxiliaryUtilities1 {
+
+  println("WORLD BANK")
   /**
     *
     * @param resultSet
@@ -149,14 +152,14 @@ object JdbcAuxiliaryUtilities {
   def getPrimaryKeysForOracle(databaseName: String, tableName: String, dbConn: Connection, NUMERIC_ONLY_FLAG: Boolean): List[String] = {
     val primaryKeyStatement: String =
       s"""
-         |SELECT cols.table_name as ColumnName
+         |SELECT cols.column_name as ColumnName
          |FROM all_constraints cons, all_cons_columns cols
          |WHERE cols.table_name = '${tableName.toUpperCase}'
          |AND cons.constraint_type = 'P'
+         |AND cols.owner='${databaseName.toUpperCase}'
          |AND cons.constraint_name = cols.constraint_name
          |AND cons.owner = cols.owner
-         |ORDER BY cols.table_name, cols.position;
-         |
+         |ORDER BY cols.column_name, cols.position
        """.stripMargin
 
     val updatedPrimaryKeyStatement = NUMERIC_ONLY_FLAG match {
@@ -248,73 +251,73 @@ object JdbcAuxiliaryUtilities {
   def getColumnsForDBQuery(db: String): String = {
     // get the columns for  particular table
     val getColumnTypesQuery: String =
-    s"""
-       | SELECT DatabaseName, TableName, ColumnName, CASE ColumnType
-       |    WHEN 'BF' THEN 'BYTE('            || TRIM(CAST(ColumnLength AS INTEGER)) || ')'
-       |    WHEN 'BV' THEN 'VARBYTE('         || TRIM(CAST(ColumnLength AS INTEGER)) || ')'
-       |    WHEN 'CF' THEN 'CHAR('            || TRIM(CAST(ColumnLength AS INTEGER)) || ')'
-       |    WHEN 'CV' THEN 'VARCHAR('         || TRIM(CAST(ColumnLength AS INTEGER)) || ')'
-       |    WHEN 'D' THEN 'DECIMAL('         || TRIM(DecimalTotalDigits) || ','
-       |                                      || TRIM(DecimalFractionalDigits) || ')'
-       |    WHEN 'DA' THEN 'DATE'
-       |    WHEN 'F ' THEN 'FLOAT'
-       |    WHEN 'I1' THEN 'BYTEINT'
-       |    WHEN 'I2' THEN 'SMALLINT'
-       |    WHEN 'I8' THEN 'BIGINT'
-       |    WHEN 'I ' THEN 'INTEGER'
-       |    WHEN 'AT' THEN 'TIME('            || TRIM(DecimalFractionalDigits) || ')'
-       |    WHEN 'TS' THEN 'TIMESTAMP('       || TRIM(DecimalFractionalDigits) || ')'
-       |    WHEN 'TZ' THEN 'TIME('            || TRIM(DecimalFractionalDigits) || ')' || ' WITH TIME ZONE'
-       |    WHEN 'SZ' THEN 'TIMESTAMP('       || TRIM(DecimalFractionalDigits) || ')' || ' WITH TIME ZONE'
-       |    WHEN 'YR' THEN 'INTERVAL YEAR('   || TRIM(DecimalTotalDigits) || ')'
-       |    WHEN 'YM' THEN 'INTERVAL YEAR('   || TRIM(DecimalTotalDigits) || ')'      || ' TO MONTH'
-       |    WHEN 'MO' THEN 'INTERVAL MONTH('  || TRIM(DecimalTotalDigits) || ')'
-       |    WHEN 'DY' THEN 'INTERVAL DAY('    || TRIM(DecimalTotalDigits) || ')'
-       |    WHEN 'DH' THEN 'INTERVAL DAY('    || TRIM(DecimalTotalDigits) || ')'      || ' TO HOUR'
-       |    WHEN 'DM' THEN 'INTERVAL DAY('    || TRIM(DecimalTotalDigits) || ')'      || ' TO MINUTE'
-       |    WHEN 'DS' THEN 'INTERVAL DAY('    || TRIM(DecimalTotalDigits) || ')'      || ' TO SECOND('
-       |                                      || TRIM(DecimalFractionalDigits) || ')'
-       |    WHEN 'HR' THEN 'INTERVAL HOUR('   || TRIM(DecimalTotalDigits) || ')'
-       |    WHEN 'HM' THEN 'INTERVAL HOUR('   || TRIM(DecimalTotalDigits) || ')'      || ' TO MINUTE'
-       |    WHEN 'HS' THEN 'INTERVAL HOUR('   || TRIM(DecimalTotalDigits) || ')'      || ' TO SECOND('
-       |                                      || TRIM(DecimalFractionalDigits) || ')'
-       |    WHEN 'MI' THEN 'INTERVAL MINUTE(' || TRIM(DecimalTotalDigits) || ')'
-       |    WHEN 'MS' THEN 'INTERVAL MINUTE(' || TRIM(DecimalTotalDigits) || ')'      || ' TO SECOND('
-       |                                      || TRIM(DecimalFractionalDigits) || ')'
-       |    WHEN 'SC' THEN 'INTERVAL SECOND(' || TRIM(DecimalTotalDigits) || ','
-       |                                      || TRIM(DecimalFractionalDigits) || ')'
-       |    WHEN 'BO' THEN 'BLOB('            || TRIM(CAST(ColumnLength AS INTEGER)) || ')'
-       |    WHEN 'CO' THEN 'CLOB('            || TRIM(CAST(ColumnLength AS INTEGER)) || ')'
-       |
+      s"""
+         | SELECT DatabaseName, TableName, ColumnName, CASE ColumnType
+         |    WHEN 'BF' THEN 'BYTE('            || TRIM(CAST(ColumnLength AS INTEGER)) || ')'
+         |    WHEN 'BV' THEN 'VARBYTE('         || TRIM(CAST(ColumnLength AS INTEGER)) || ')'
+         |    WHEN 'CF' THEN 'CHAR('            || TRIM(CAST(ColumnLength AS INTEGER)) || ')'
+         |    WHEN 'CV' THEN 'VARCHAR('         || TRIM(CAST(ColumnLength AS INTEGER)) || ')'
+         |    WHEN 'D' THEN 'DECIMAL('         || TRIM(DecimalTotalDigits) || ','
+         |                                      || TRIM(DecimalFractionalDigits) || ')'
+         |    WHEN 'DA' THEN 'DATE'
+         |    WHEN 'F ' THEN 'FLOAT'
+         |    WHEN 'I1' THEN 'BYTEINT'
+         |    WHEN 'I2' THEN 'SMALLINT'
+         |    WHEN 'I8' THEN 'BIGINT'
+         |    WHEN 'I ' THEN 'INTEGER'
+         |    WHEN 'AT' THEN 'TIME('            || TRIM(DecimalFractionalDigits) || ')'
+         |    WHEN 'TS' THEN 'TIMESTAMP('       || TRIM(DecimalFractionalDigits) || ')'
+         |    WHEN 'TZ' THEN 'TIME('            || TRIM(DecimalFractionalDigits) || ')' || ' WITH TIME ZONE'
+         |    WHEN 'SZ' THEN 'TIMESTAMP('       || TRIM(DecimalFractionalDigits) || ')' || ' WITH TIME ZONE'
+         |    WHEN 'YR' THEN 'INTERVAL YEAR('   || TRIM(DecimalTotalDigits) || ')'
+         |    WHEN 'YM' THEN 'INTERVAL YEAR('   || TRIM(DecimalTotalDigits) || ')'      || ' TO MONTH'
+         |    WHEN 'MO' THEN 'INTERVAL MONTH('  || TRIM(DecimalTotalDigits) || ')'
+         |    WHEN 'DY' THEN 'INTERVAL DAY('    || TRIM(DecimalTotalDigits) || ')'
+         |    WHEN 'DH' THEN 'INTERVAL DAY('    || TRIM(DecimalTotalDigits) || ')'      || ' TO HOUR'
+         |    WHEN 'DM' THEN 'INTERVAL DAY('    || TRIM(DecimalTotalDigits) || ')'      || ' TO MINUTE'
+         |    WHEN 'DS' THEN 'INTERVAL DAY('    || TRIM(DecimalTotalDigits) || ')'      || ' TO SECOND('
+         |                                      || TRIM(DecimalFractionalDigits) || ')'
+         |    WHEN 'HR' THEN 'INTERVAL HOUR('   || TRIM(DecimalTotalDigits) || ')'
+         |    WHEN 'HM' THEN 'INTERVAL HOUR('   || TRIM(DecimalTotalDigits) || ')'      || ' TO MINUTE'
+         |    WHEN 'HS' THEN 'INTERVAL HOUR('   || TRIM(DecimalTotalDigits) || ')'      || ' TO SECOND('
+         |                                      || TRIM(DecimalFractionalDigits) || ')'
+         |    WHEN 'MI' THEN 'INTERVAL MINUTE(' || TRIM(DecimalTotalDigits) || ')'
+         |    WHEN 'MS' THEN 'INTERVAL MINUTE(' || TRIM(DecimalTotalDigits) || ')'      || ' TO SECOND('
+         |                                      || TRIM(DecimalFractionalDigits) || ')'
+         |    WHEN 'SC' THEN 'INTERVAL SECOND(' || TRIM(DecimalTotalDigits) || ','
+         |                                      || TRIM(DecimalFractionalDigits) || ')'
+         |    WHEN 'BO' THEN 'BLOB('            || TRIM(CAST(ColumnLength AS INTEGER)) || ')'
+         |    WHEN 'CO' THEN 'CLOB('            || TRIM(CAST(ColumnLength AS INTEGER)) || ')'
+         |
                  |    WHEN 'PD' THEN 'PERIOD(DATE)'
-       |    WHEN 'PM' THEN 'PERIOD(TIMESTAMP('|| TRIM(DecimalFractionalDigits) || ')' || ' WITH TIME ZONE'
-       |    WHEN 'PS' THEN 'PERIOD(TIMESTAMP('|| TRIM(DecimalFractionalDigits) || '))'
-       |    WHEN 'PT' THEN 'PERIOD(TIME('     || TRIM(DecimalFractionalDigits) || '))'
-       |    WHEN 'PZ' THEN 'PERIOD(TIME('     || TRIM(DecimalFractionalDigits) || '))' || ' WITH TIME ZONE'
-       |    WHEN 'UT' THEN COALESCE(ColumnUDTName,  '<Unknown> ' || ColumnType)
-       |
+         |    WHEN 'PM' THEN 'PERIOD(TIMESTAMP('|| TRIM(DecimalFractionalDigits) || ')' || ' WITH TIME ZONE'
+         |    WHEN 'PS' THEN 'PERIOD(TIMESTAMP('|| TRIM(DecimalFractionalDigits) || '))'
+         |    WHEN 'PT' THEN 'PERIOD(TIME('     || TRIM(DecimalFractionalDigits) || '))'
+         |    WHEN 'PZ' THEN 'PERIOD(TIME('     || TRIM(DecimalFractionalDigits) || '))' || ' WITH TIME ZONE'
+         |    WHEN 'UT' THEN COALESCE(ColumnUDTName,  '<Unknown> ' || ColumnType)
+         |
          |    WHEN '++' THEN 'TD_ANYTYPE'
-       |    WHEN 'N'  THEN 'NUMBER('          || CASE WHEN DecimalTotalDigits = -128 THEN '*' ELSE TRIM(DecimalTotalDigits) END
-       |                                      || CASE WHEN DecimalFractionalDigits IN (0, -128) THEN '' ELSE ',' || TRIM(DecimalFractionalDigits) END
-       |                                      || ')'
-       |    WHEN 'A1' THEN COALESCE('SYSUDTLIB.' || ColumnUDTName,  '<Unknown> ' || ColumnType)
-       |    WHEN 'AN' THEN COALESCE('SYSUDTLIB.' || ColumnUDTName,  '<Unknown> ' || ColumnType)
-       |
+         |    WHEN 'N'  THEN 'NUMBER('          || CASE WHEN DecimalTotalDigits = -128 THEN '*' ELSE TRIM(DecimalTotalDigits) END
+         |                                      || CASE WHEN DecimalFractionalDigits IN (0, -128) THEN '' ELSE ',' || TRIM(DecimalFractionalDigits) END
+         |                                      || ')'
+         |    WHEN 'A1' THEN COALESCE('SYSUDTLIB.' || ColumnUDTName,  '<Unknown> ' || ColumnType)
+         |    WHEN 'AN' THEN COALESCE('SYSUDTLIB.' || ColumnUDTName,  '<Unknown> ' || ColumnType)
+         |
          |    ELSE '<Unknown> ' || ColumnType
-       |  END
-       |  || CASE
-       |        WHEN ColumnType IN ('CV', 'CF', 'CO')
-       |        THEN CASE CharType
-       |                WHEN 1 THEN ' CHARACTER SET LATIN'
-       |                WHEN 2 THEN ' CHARACTER SET UNICODE'
-       |                WHEN 3 THEN ' CHARACTER SET KANJISJIS'
-       |                WHEN 4 THEN ' CHARACTER SET GRAPHIC'
-       |                WHEN 5 THEN ' CHARACTER SET KANJI1'
-       |                ELSE ''
-       |             END
-       |         ELSE ''
-       |      END AS ColumnDataType
-       |
+         |  END
+         |  || CASE
+         |        WHEN ColumnType IN ('CV', 'CF', 'CO')
+         |        THEN CASE CharType
+         |                WHEN 1 THEN ' CHARACTER SET LATIN'
+         |                WHEN 2 THEN ' CHARACTER SET UNICODE'
+         |                WHEN 3 THEN ' CHARACTER SET KANJISJIS'
+         |                WHEN 4 THEN ' CHARACTER SET GRAPHIC'
+         |                WHEN 5 THEN ' CHARACTER SET KANJI1'
+         |                ELSE ''
+         |             END
+         |         ELSE ''
+         |      END AS ColumnDataType
+         |
                  |      from dbc.COLUMNSV where databasename='${db}'
                """.stripMargin
 
@@ -541,7 +544,7 @@ object JdbcAuxiliaryUtilities {
   def dropAllPartitionTables(dbtable: String, con: Connection, numPartitions: Int,
                              logger: Option[Logger] = None): Unit = {
     for (partitionId <- 0 until numPartitions) {
-      JdbcAuxiliaryUtilities.dropTable(s"${dbtable}_${JdbcConstants.GIMEL_TEMP_PARTITION}_$partitionId",
+      JdbcAuxiliaryUtilities1.dropTable(s"${dbtable}_${JdbcConstants.GIMEL_TEMP_PARTITION}_$partitionId",
         con, digestException = false)
     }
   }
@@ -559,7 +562,7 @@ object JdbcAuxiliaryUtilities {
       connection.get
     } else {
       val dbc = jdbcConnectionUtility.getJdbcConnectionAndSetQueryBand()
-      JdbcAuxiliaryUtilities.executePreConfigs(jdbcHolder.jdbcURL, jdbcHolder.dbTable, dbc)
+      JdbcAuxiliaryUtilities1.executePreConfigs(jdbcHolder.jdbcURL, jdbcHolder.dbTable, dbc)
       dbc
     }
   }

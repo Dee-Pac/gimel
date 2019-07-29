@@ -27,7 +27,7 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 
 import com.paypal.gimel.common.conf.GimelConstants
 import com.paypal.gimel.datasetfactory.GimelDataSet
-import com.paypal.gimel.jdbc.utilities.JdbcAuxiliaryUtilities._
+import com.paypal.gimel.jdbc.utilities.JdbcAuxiliaryUtilities1._
 import com.paypal.gimel.jdbc.utilities.JDBCUtilities
 import com.paypal.gimel.logger.Logger
 
@@ -59,7 +59,7 @@ class DataSet(sparkSession: SparkSession) extends GimelDataSet(sparkSession: Spa
       jdbcUtilities.read(dataSet, dataSetProps)
     } catch {
       case e: Throwable =>
-        val msg = s"Error reading from TERADATA table: ${e.getMessage}"
+        val msg = s"Error reading from JDBC source: ${e.getMessage}"
         throw new DataSetOperationException(msg, e)
     }
   }

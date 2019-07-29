@@ -48,7 +48,7 @@ object PartitionUtils {
         // TODO validate if the partition columns are available on the table else throw Runtime exception
         partitionCols
       case None if conf.contains(JdbcConfigs.jdbcUrl) && conf.contains(JdbcConfigs.jdbcDbTable) =>
-        JdbcAuxiliaryUtilities.getPrimaryKeys(
+        JdbcAuxiliaryUtilities1.getPrimaryKeys(
           conf(JdbcConfigs.jdbcUrl),
           conf(JdbcConfigs.jdbcDbTable),
           connection

@@ -34,7 +34,7 @@ import com.paypal.gimel.common.catalog.DataSetProperties
 import com.paypal.gimel.common.conf.{CatalogProviderConfigs, GimelConstants}
 import com.paypal.gimel.jdbc.conf.{JdbcConfigs, JdbcConstants}
 import com.paypal.gimel.jdbc.exception._
-import com.paypal.gimel.jdbc.utilities.JdbcAuxiliaryUtilities.getJDBCSystem
+import com.paypal.gimel.jdbc.utilities.JdbcAuxiliaryUtilities1._
 import com.paypal.gimel.logger.Logger
 
 /**
@@ -42,6 +42,8 @@ import com.paypal.gimel.logger.Logger
   * This implementation will be used to read from any JDBC data sources e.g. MYSQL, TERADATA
   */
 object JDBCUtilities {
+
+
 
   val DEF_LOWER_BOUND : Long = 0
   val DEF_UPPER_BOUND : Long = 20
@@ -84,7 +86,7 @@ class JDBCUtilities(sparkSession: SparkSession) extends Serializable {
 
     val jdbcConnectionUtility: JDBCConnectionUtility = JDBCConnectionUtility(sparkSession, dataSetProps)
 
-    val jdbcOptions: Map[String, String] = JdbcAuxiliaryUtilities.getJDBCOptions(dataSetProps)
+    val jdbcOptions: Map[String, String] = JdbcAuxiliaryUtilities1.getJDBCOptions(dataSetProps)
     logger.info(s"Received JDBC options: $jdbcOptions and dataset options: $dataSetProps")
 
     val jdbcURL = jdbcOptions(JdbcConfigs.jdbcUrl)
@@ -101,7 +103,7 @@ class JDBCUtilities(sparkSession: SparkSession) extends Serializable {
 
     // set number of partitions
     val userSpecifiedPartitions = dataSetProps.get("numPartitions")
-    val numPartitions: Int = JdbcAuxiliaryUtilities.getNumPartitions(jdbcURL, userSpecifiedPartitions,
+    val numPartitions: Int = JdbcAuxiliaryUtilities1.getNumPartitions(jdbcURL, userSpecifiedPartitions,
       JdbcConstants.readOperation)
 
     val fetchSize = dataSetProps.getOrElse("fetchSize", JdbcConstants.defaultReadFetchSize).toString.toInt
@@ -124,7 +126,7 @@ class JDBCUtilities(sparkSession: SparkSession) extends Serializable {
         case _ =>
           val (lowerBoundValue: Double, upperBoundValue: Double) = if (partitionColumns.nonEmpty) {
             logger.info(s"Partition column is set to ${partitionColumns.head}")
-            JdbcAuxiliaryUtilities.getMinMax(partitionColumns.head, dbtable, conn)
+            JdbcAuxiliaryUtilities1.getMinMax(partitionColumns.head, dbtable, conn)
           }
           else {
             (JDBCUtilities.DEF_LOWER_BOUND, JDBCUtilities.DEF_UPPER_BOUND)
@@ -134,7 +136,7 @@ class JDBCUtilities(sparkSession: SparkSession) extends Serializable {
           val upperBound = dataSetProps.getOrElse("upperBound", upperBoundValue).toString.toLong
 
           // default spark JDBC read
-          JdbcAuxiliaryUtilities.sparkJdbcRead(sparkSession, jdbcURL, dbtable,
+          JdbcAuxiliaryUtilities1.sparkJdbcRead(sparkSession, jdbcURL, dbtable,
             partitionColumns.head, lowerBound, upperBound, numPartitions, fetchSize,
             jdbcConnectionUtility.getConnectionProperties())
       }
@@ -169,7 +171,7 @@ class JDBCUtilities(sparkSession: SparkSession) extends Serializable {
 
     val logger = Logger(this.getClass.getName)
     val jdbcConnectionUtility: JDBCConnectionUtility = JDBCConnectionUtility(sparkSession, dataSetProps)
-    val jdbcOptions: Map[String, String] = JdbcAuxiliaryUtilities.getJDBCOptions(dataSetProps)
+    val jdbcOptions: Map[String, String] = JdbcAuxiliaryUtilities1.getJDBCOptions(dataSetProps)
     var jdbc_url = jdbcOptions(JdbcConfigs.jdbcUrl)
 
     val batchSize: Int = dataSetProps.getOrElse("batchSize", s"${JdbcConstants.defaultWriteBatchSize}").toString.toInt
@@ -203,7 +205,7 @@ class JDBCUtilities(sparkSession: SparkSession) extends Serializable {
       val whereColumns: List[String] = {
         val userSpecifiedWhereColumns = dataSetProps.getOrElse(JdbcConfigs.jdbcUpdateWhereColumns, null)
         if (userSpecifiedWhereColumns == null) {
-          val primaryKeys = JdbcAuxiliaryUtilities.getPrimaryKeys(jdbc_url, dbtable, jdbcConnectionUtility.getJdbcConnectionAndSetQueryBand(), false)
+          val primaryKeys = JdbcAuxiliaryUtilities1.getPrimaryKeys(jdbc_url, dbtable, jdbcConnectionUtility.getJdbcConnectionAndSetQueryBand(), false)
           primaryKeys
         }
         else {
@@ -225,7 +227,7 @@ class JDBCUtilities(sparkSession: SparkSession) extends Serializable {
       logger.info(s"Truncating the table :$dbtable as part of the FullLoad strategy")
       // truncate table
       JDBCConnectionUtility.withResources(jdbcConnectionUtility.getJdbcConnectionAndSetQueryBand()) {
-        connection => JdbcAuxiliaryUtilities.truncateTable(jdbc_url, dbtable, connection, Some(logger))
+        connection => JdbcAuxiliaryUtilities1.truncateTable(jdbc_url, dbtable, connection, Some(logger))
       }
     }
 
@@ -238,7 +240,7 @@ class JDBCUtilities(sparkSession: SparkSession) extends Serializable {
         (batchSize, insertParallelBatch _)
     }
 
-    val sourceDataFrame = JdbcAuxiliaryUtilities.getPartitionedDataFrame(jdbc_url, dataFrame, userSpecifiedPartitions)
+    val sourceDataFrame = JdbcAuxiliaryUtilities1.getPartitionedDataFrame(jdbc_url, dataFrame, userSpecifiedPartitions)
 
     val jdbcHolder = partialArgHolder(insetBatchSize)
 
@@ -354,7 +356,7 @@ class JDBCUtilities(sparkSession: SparkSession) extends Serializable {
   private def insertParallelBatch(dataFrame: DataFrame, jdbcConnectionUtility: JDBCConnectionUtility,
                                   jdbcHolder: JDBCArgsHolder) {
     import JDBCConnectionUtility.withResources
-    val jdbcSystem = JdbcAuxiliaryUtilities.getJDBCSystem(jdbcHolder.jdbcURL)
+    val jdbcSystem = JdbcAuxiliaryUtilities1.getJDBCSystem(jdbcHolder.jdbcURL)
     var ddl = ""
     jdbcSystem match {
       case JdbcConstants.TERADATA =>
@@ -362,7 +364,7 @@ class JDBCUtilities(sparkSession: SparkSession) extends Serializable {
         withResources(jdbcConnectionUtility.getJdbcConnectionAndSetQueryBand()) {
           connection =>
             // get DDL of target table
-            ddl = JdbcAuxiliaryUtilities.getDDL(jdbcHolder.jdbcURL, jdbcHolder.dbTable, connection)
+            ddl = JdbcAuxiliaryUtilities1.getDDL(jdbcHolder.jdbcURL, jdbcHolder.dbTable, connection)
         }
       case _ => // do nothing
     }
@@ -381,22 +383,22 @@ class JDBCUtilities(sparkSession: SparkSession) extends Serializable {
       // NOTE: Here, singleton connection is replaced by java.sql.Connection creating a separate connection
       // for every partition.
       // Singleton connection connection needs to be correctly verified within multiple cores.
-      val dbc = JdbcAuxiliaryUtilities.createConnectionWithPreConfigsSet(jdbcConnectionUtility, jdbcHolder)
+      val dbc = JdbcAuxiliaryUtilities1.createConnectionWithPreConfigsSet(jdbcConnectionUtility, jdbcHolder)
 
       val partitionTableName = jdbcSystem match {
         case JdbcConstants.TERADATA =>
-          val partitionTableName = JdbcAuxiliaryUtilities.getPartitionTableName(jdbcHolder.jdbcURL,
+          val partitionTableName = JdbcAuxiliaryUtilities1.getPartitionTableName(jdbcHolder.jdbcURL,
             jdbcHolder.dbTable, dbc, partitionID)
 
           // first drop the temp table, if exists
-          JdbcAuxiliaryUtilities.dropTable(partitionTableName, dbc)
+          JdbcAuxiliaryUtilities1.dropTable(partitionTableName, dbc)
 
           try {
             // create JDBC temp table
             val tempTableDDL = ddl.replace(jdbcHolder.dbTable, partitionTableName)
             logger.info(s"Creating temp table: $partitionTableName with DDL = $tempTableDDL")
             // create a temp partition table
-            JdbcAuxiliaryUtilities.executeQueryStatement(tempTableDDL, dbc)
+            JdbcAuxiliaryUtilities1.executeQueryStatement(tempTableDDL, dbc)
           }
           catch {
             case ex: Throwable =>
@@ -417,10 +419,10 @@ class JDBCUtilities(sparkSession: SparkSession) extends Serializable {
         logger.info(s"Inserting into $partitionTableName")
         val maxBatchSize = math.max(1, jdbcHolder.batchSize)
         withResources {
-          JdbcAuxiliaryUtilities.createConnectionWithPreConfigsSet(jdbcConnectionUtility, jdbcHolder, Option(dbc))
+          JdbcAuxiliaryUtilities1.createConnectionWithPreConfigsSet(jdbcConnectionUtility, jdbcHolder, Option(dbc))
         } { connection =>
           withResources {
-            connection.prepareStatement(JdbcAuxiliaryUtilities.getInsertStatement(partitionTableName, jdbcHolder.cols))
+            connection.prepareStatement(JdbcAuxiliaryUtilities1.getInsertStatement(partitionTableName, jdbcHolder.cols))
           } {
             statement => {
               val start = System.currentTimeMillis
@@ -492,25 +494,25 @@ class JDBCUtilities(sparkSession: SparkSession) extends Serializable {
     jdbcSystem match {
       case JdbcConstants.TERADATA =>
         try {
-          withResources(JdbcAuxiliaryUtilities.createConnectionWithPreConfigsSet(jdbcConnectionUtility, jdbcHolder)) {
+          withResources(JdbcAuxiliaryUtilities1.createConnectionWithPreConfigsSet(jdbcConnectionUtility, jdbcHolder)) {
             connection =>
 
               // Now union all the temp partition tables and insert into target table
               // and insert all partitions into target table
-              JdbcAuxiliaryUtilities.insertPartitionsIntoTargetTable(jdbcHolder.dbTable,
+              JdbcAuxiliaryUtilities1.insertPartitionsIntoTargetTable(jdbcHolder.dbTable,
                 connection, dataFrame.toJavaRDD.getNumPartitions, driverLogger)
 
               // now drop all the temp tables created by executors
-              JdbcAuxiliaryUtilities.dropAllPartitionTables(jdbcHolder.dbTable,
+              JdbcAuxiliaryUtilities1.dropAllPartitionTables(jdbcHolder.dbTable,
                 connection, dataFrame.toJavaRDD.getNumPartitions, driverLogger)
           }
         } catch {
           case e: Throwable =>
             withResources {
-              JdbcAuxiliaryUtilities.createConnectionWithPreConfigsSet(jdbcConnectionUtility, jdbcHolder)
+              JdbcAuxiliaryUtilities1.createConnectionWithPreConfigsSet(jdbcConnectionUtility, jdbcHolder)
             } { connection =>
               // now drop all the temp tables created by executors
-              JdbcAuxiliaryUtilities.dropAllPartitionTables(jdbcHolder.dbTable,
+              JdbcAuxiliaryUtilities1.dropAllPartitionTables(jdbcHolder.dbTable,
                 connection, dataFrame.toJavaRDD.getNumPartitions, driverLogger)
             }
             e.printStackTrace()
@@ -535,10 +537,10 @@ class JDBCUtilities(sparkSession: SparkSession) extends Serializable {
         // NOTE: Here, singleton connection is replaced by java.sql.Connection creating a separate connection for every partition.
         // Singleton connection connection needs to be correctly verified within multiple cores.
         val dbc = jdbcConnectionUtility.getJdbcConnectionAndSetQueryBand()
-        JdbcAuxiliaryUtilities.executePreConfigs(jdbcHolder.jdbcURL, jdbcHolder.dbTable, dbc)
+        JdbcAuxiliaryUtilities1.executePreConfigs(jdbcHolder.jdbcURL, jdbcHolder.dbTable, dbc)
 
         try {
-          val updateStatement = JdbcAuxiliaryUtilities.getUpdateStatement(jdbcHolder.dbTable, jdbcHolder.setColumns, jdbcHolder.whereColumns)
+          val updateStatement = JdbcAuxiliaryUtilities1.getUpdateStatement(jdbcHolder.dbTable, jdbcHolder.setColumns, jdbcHolder.whereColumns)
           val st: PreparedStatement = dbc.prepareStatement(updateStatement)
           val maxBatchSize = math.max(1, jdbcHolder.batchSize)
           val setColumnIndices = jdbcHolder.setColumns.map(getColumnIndex(jdbcHolder.dataFrameColumns, _))
@@ -598,10 +600,10 @@ class JDBCUtilities(sparkSession: SparkSession) extends Serializable {
     dataFrame.foreachPartition { batch =>
       if (batch.nonEmpty) {
         val dbc = jDBCConnectionUtility.getJdbcConnectionAndSetQueryBand()
-        JdbcAuxiliaryUtilities.executePreConfigs(jdbcHolder.jdbcURL, jdbcHolder.dbTable, dbc)
+        JdbcAuxiliaryUtilities1.executePreConfigs(jdbcHolder.jdbcURL, jdbcHolder.dbTable, dbc)
         try {
           val numCols: Int = jdbcHolder.cols
-          val updateStatement = JdbcAuxiliaryUtilities.getUpdateStatement(jdbcHolder.dbTable, jdbcHolder.setColumns, jdbcHolder.whereColumns)
+          val updateStatement = JdbcAuxiliaryUtilities1.getUpdateStatement(jdbcHolder.dbTable, jdbcHolder.setColumns, jdbcHolder.whereColumns)
           val st: PreparedStatement = dbc.prepareStatement(updateStatement)
           val setColumnIndices = jdbcHolder.setColumns.map(getColumnIndex(jdbcHolder.dataFrameColumns, _))
           val whereColumnIndices = jdbcHolder.whereColumns.map(getColumnIndex(jdbcHolder.dataFrameColumns, _))
@@ -614,7 +616,7 @@ class JDBCUtilities(sparkSession: SparkSession) extends Serializable {
             val updateResult: Int = st.executeUpdate()
             // if no update, then insert into table
             if (updateResult == 0) {
-              val st = dbc.prepareStatement(JdbcAuxiliaryUtilities.getInsertStatement(jdbcHolder.dbTable, numCols))
+              val st = dbc.prepareStatement(JdbcAuxiliaryUtilities1.getInsertStatement(jdbcHolder.dbTable, numCols))
               cookStatementWithRow(st, row, 0 until row.schema.length, 1 to row.schema.length)
               // insert into table
               try {
@@ -663,7 +665,7 @@ class JDBCUtilities(sparkSession: SparkSession) extends Serializable {
   def create(dataset: String, dataSetProps: Map[String, Any]): Boolean = {
     val logger = Logger(this.getClass.getName)
     val jdbcConnectionUtility: JDBCConnectionUtility = JDBCConnectionUtility(sparkSession, dataSetProps)
-    val jdbcOptions: Map[String, String] = JdbcAuxiliaryUtilities.getJDBCOptions(dataSetProps)
+    val jdbcOptions: Map[String, String] = JdbcAuxiliaryUtilities1.getJDBCOptions(dataSetProps)
     val actualProps: DataSetProperties = dataSetProps(GimelConstants.DATASET_PROPS).asInstanceOf[DataSetProperties]
     val catalogProvider = dataSetProps.get(CatalogProviderConfigs.CATALOG_PROVIDER).get.toString
     val sql = dataSetProps.get(GimelConstants.TABLE_SQL).get.toString
@@ -747,7 +749,7 @@ class JDBCUtilities(sparkSession: SparkSession) extends Serializable {
     */
   def drop(dataset: String, dataSetProps: Map[String, Any]): Boolean = {
     val jdbcConnectionUtility: JDBCConnectionUtility = JDBCConnectionUtility(sparkSession, dataSetProps)
-    val jdbcOptions: Map[String, String] = JdbcAuxiliaryUtilities.getJDBCOptions(dataSetProps)
+    val jdbcOptions: Map[String, String] = JdbcAuxiliaryUtilities1.getJDBCOptions(dataSetProps)
     val actualProps: DataSetProperties = dataSetProps(GimelConstants.DATASET_PROPS).asInstanceOf[DataSetProperties]
     val dropTableStatement = s"""DROP TABLE ${jdbcOptions(JdbcConfigs.jdbcDbTable)}"""
     val con = jdbcConnectionUtility.getJdbcConnectionAndSetQueryBand()
@@ -763,7 +765,7 @@ class JDBCUtilities(sparkSession: SparkSession) extends Serializable {
     */
   def truncate(dataset: String, dataSetProps: Map[String, Any]): Boolean = {
     val jdbcConnectionUtility: JDBCConnectionUtility = JDBCConnectionUtility(sparkSession, dataSetProps)
-    val jdbcOptions: Map[String, String] = JdbcAuxiliaryUtilities.getJDBCOptions(dataSetProps)
+    val jdbcOptions: Map[String, String] = JdbcAuxiliaryUtilities1.getJDBCOptions(dataSetProps)
     val actualProps: DataSetProperties = dataSetProps(GimelConstants.DATASET_PROPS).asInstanceOf[DataSetProperties]
     val dropTableStatement = s"""DELETE FROM ${jdbcOptions(JdbcConfigs.jdbcDbTable)}"""
     val con = jdbcConnectionUtility.getJdbcConnectionAndSetQueryBand()

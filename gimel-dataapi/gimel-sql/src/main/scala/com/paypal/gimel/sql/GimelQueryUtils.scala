@@ -42,7 +42,7 @@ import com.paypal.gimel.hive.conf.HiveConfigs
 import com.paypal.gimel.hive.utilities.HiveUtils
 import com.paypal.gimel.jdbc.conf.{JdbcConfigs, JdbcConstants}
 import com.paypal.gimel.jdbc.utilities._
-import com.paypal.gimel.jdbc.utilities.JdbcAuxiliaryUtilities.getJDBCSystem
+import com.paypal.gimel.jdbc.utilities.JdbcAuxiliaryUtilities1.getJDBCSystem
 import com.paypal.gimel.kafka.conf.KafkaConfigs
 import com.paypal.gimel.logger.Logger
 import com.paypal.gimel.logging.GimelStreamingListener
@@ -411,7 +411,7 @@ object GimelQueryUtils {
     val (cacheStatement, selectSQL) = splitCacheQuery(inputSQL)
 
     val dataSetProps = sparkSession.conf.getAll
-    val jdbcOptions: Map[String, String] = JdbcAuxiliaryUtilities.getJDBCOptions(dataSetProps)
+    val jdbcOptions: Map[String, String] = JdbcAuxiliaryUtilities1.getJDBCOptions(dataSetProps)
 
     // get jdbc Password Strategy
     val jdbcPasswordStrategy = dataSetProps.getOrElse(JdbcConfigs.jdbcPasswordStrategy,
@@ -437,7 +437,7 @@ object GimelQueryUtils {
 
     // set number of partitions
     val userSpecifiedPartitions = dataSetProps.get("numPartitions")
-    val numPartitions: Int = JdbcAuxiliaryUtilities.getNumPartitions(jdbcOptions(JdbcConfigs.jdbcUrl),
+    val numPartitions: Int = JdbcAuxiliaryUtilities1.getNumPartitions(jdbcOptions(JdbcConfigs.jdbcUrl),
       userSpecifiedPartitions, JdbcConstants.readOperation)
 
     val fetchSize = dataSetProps.getOrElse("fetchSize", JdbcConstants.defaultReadFetchSize).toString.toInt
@@ -472,7 +472,7 @@ object GimelQueryUtils {
           sparkSession.createDataFrame(rowRDD, tableSchema)
         case _ =>
           logger.info(s"Final SQL for Query Push Down --> $pushDownSqlAsTempTable")
-          JdbcAuxiliaryUtilities.sparkJdbcRead(sparkSession, jdbcOptions(JdbcConfigs.jdbcUrl), pushDownSqlAsTempTable,
+          JdbcAuxiliaryUtilities1.sparkJdbcRead(sparkSession, jdbcOptions(JdbcConfigs.jdbcUrl), pushDownSqlAsTempTable,
             JdbcConstants.noPartitionColumn, JdbcConstants.defaultLowerBound, JdbcConstants.defaultUpperBound,
             1, fetchSize, jdbcConnectionUtility.getConnectionProperties())
       }

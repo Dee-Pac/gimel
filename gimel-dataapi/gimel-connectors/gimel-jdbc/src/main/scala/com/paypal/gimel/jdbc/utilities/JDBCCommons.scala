@@ -24,7 +24,7 @@ import java.sql.{Connection, DriverManager}
 import org.apache.spark.sql.SparkSession
 
 import com.paypal.gimel.jdbc.conf.{JdbcConfigs, JdbcConstants}
-import com.paypal.gimel.jdbc.utilities.JdbcAuxiliaryUtilities._
+import com.paypal.gimel.jdbc.utilities.JdbcAuxiliaryUtilities1._
 import com.paypal.gimel.logger.Logger
 
 
