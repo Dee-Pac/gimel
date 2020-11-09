@@ -3,7 +3,7 @@
 ```
 
 ________________________________
-<span style="font-family:PayPal; font-size:3em; color:rgb(100, 25, 138)">Initiated Spark Session with Gimel Libraries</span>
+## <span style="font-family:PayPal; font-size:3em; color:rgb(100, 25, 138)">Initiated Spark Session with Gimel Libraries</span>
 ________________________________
 
 
@@ -23,7 +23,7 @@ spark.version
 ```
 
 ________________________________
-<span style="font-family:PayPal; font-size:3em; color:rgb(100, 25, 138)">Initiated Gimel Data / SQL API</span>
+## <span style="font-family:PayPal; font-size:3em; color:rgb(100, 25, 138)">Initiated Gimel Data / SQL API</span>
 ________________________________
 
 
@@ -42,7 +42,7 @@ dataset = ScalaDataSet.apply(jspark)
 ```
 
 ________________________________
-<span style="font-family:PayPal; font-size:3em; color:rgb(100, 25, 138)">Read, Transform, Write</span>
+## <span style="font-family:PayPal; font-size:3em; color:rgb(100, 25, 138)">Read, Transform, Write</span>
 ________________________________
 
 
@@ -94,7 +94,7 @@ where ...
 ```
 
 ________________________________
-<span style="font-family:PayPal; font-size:3em; color:rgb(100, 25, 138)">Set External Catalog Provider</span>
+## <span style="font-family:PayPal; font-size:3em; color:rgb(100, 25, 138)">Set External Catalog Provider</span>
 ________________________________
 
 
@@ -109,7 +109,7 @@ spark.sql("set udc.protocol=https")
 ```
 
 ________________________________
-<span style="font-family:PayPal; font-size:3em; color:rgb(100, 25, 138)">Set Runtime Catalog</span>
+## <span style="font-family:PayPal; font-size:3em; color:rgb(100, 25, 138)">Set Runtime Catalog</span>
 ________________________________
 
 
