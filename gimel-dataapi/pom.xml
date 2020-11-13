@@ -47,6 +47,7 @@ under the License.
         <module>gimel-connectors/gimel-jdbc</module>
         <module>gimel-connectors/gimel-cassandra</module>
         <module>gimel-connectors/gimel-aerospike</module>
+        <module>gimel-connectors/gimel-bigquery</module>
         <module>gimel-core</module>
     </modules>
 
