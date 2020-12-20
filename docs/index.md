@@ -6,27 +6,29 @@
 * Alongside, a unified SQL access pattern for all stores alike. 
 * The APIs are available in both scala & python (pyspark).
 
+### Scala
+
 ```scala
 /* Simple Data API example of read from kafka, transform & write to elastic */
 
-# Initiate API
+// Initiate API
 val dataset = com.paypal.gimel.DataSet(spark)
 
-# Read Data | kafka semantics abstracted for user
+// Read Data | kafka semantics abstracted for user
 val df: DataFrame = dataset.read("kafka_dataset")
 
-# Apply transformations (business logic | abstracted for Gimel)
+// Apply transformations (business logic | abstracted for Gimel)
 val transformed_df: DataFrame = df(...transformations...)
 
-# Write Data | Elastic semantics abstracted for user
+// Write Data | Elastic semantics abstracted for user
 dataset.write("elastic_dataset",df)
 
-# GSQL Reference
+/* GSQL Reference */
 
 // Create Gimel SQL reference
 val gsql: (String) => DataFrame = com.paypal.gimel.scaas.GimelQueryProcessor.executeBatch(_: String, spark)
 
-# your SQL
+// your SQL
 val sql = """
 insert into elastic_dataset
 select * from kafka_dataset
@@ -36,6 +38,7 @@ gsql(sql)
 
 ```
 
+### Python | pyspark
 ```python
 
 # import DataFrame and SparkSession
