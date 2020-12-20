@@ -15,6 +15,7 @@ Contents
 
 --------------------------------------------------------------------------------------------------------------------
 
+# What is gimel?
 
 * Gimel is a Big Data Abstraction framework built on Apache Spark & other open source connectors in the industry.
 * Gimel provides unified Data API to read & write data to various stores. 
