@@ -2,18 +2,6 @@
 
 Contents
 =================
-
-  * [What is gimel](#what-is-gimel)
-  * [Gimel Overview](#gimel-overview)
-  * [Edit on GitHub](https://github.com/paypal/gimel)
-  * [APIs & Version Compatibility](#stack-&-version-compatibility)
-  * [Getting Started](getting-started/build-gimel.md)
-  * [Gimel Catalog Providers](gimel-catalog/catalog-provider.md)
-  * [Contribution Guidelines](CONTRIBUTING.md)
-  * [Adding a new connector](gimel-connectors/adding-new-connector.md)
-  * [Questions](#questions)
-  
-  
  
 
 | [What is gimel](#what-is-gimel) | [Edit on GitHub](https://github.com/paypal/gimel) | [APIs & Version Compatibility](#stack-&-version-compatibility) |
