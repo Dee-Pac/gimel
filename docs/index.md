@@ -11,6 +11,7 @@ Contents
 =================
 
   * [Edit on GitHub](https://github.com/paypal/gimel)
+  * [What is Gimel & Why is it important](gimel-overview)
   * [APIs & Version Compatibility](#stack-&-version-compatibility)
   * [Getting Started](getting-started/build-gimel.md)
   * [Gimel Catalog Providers](gimel-catalog/catalog-provider.md)
@@ -20,8 +21,21 @@ Contents
 
 --------------------------------------------------------------------------------------------------------------------
 
-[![Watch the video](https://i.imgur.com/vKb2F1B.png)](https://youtu.be/vt5fpE0bzSY)
+# Gimel overview
 
+## [2020 - Gimel @ Scale By The Bay, Online](https://sched.co/e55D)
+* Slides - https://www.slideshare.net/DeepakMC/data-orchestration-2020-alluxio-gimel 
+[![Watch the video](images/scale_by_the_bay_2020.png)](https://youtu.be/cy8g2WZbEBI)
+
+## [2020 - Gimel @ Data Orchestration Summit By Alluxio, Online](https://www.alluxio.io/resources/videos/unified-data-access-with-gimel/)
+* Slides - https://www2.slideshare.net/DeepakMC/gimel-scale-bythebay20201113
+[![Watch the video](images/data_orchestration_summit_2020.png)](https://youtu.be/V5ukRSqcmYY)
+
+## [2018 - Gimel @ QCon.ai, SF](https://www.infoq.com/qconai2018/)
+* Slides - https://www.slideshare.net/DeepakMC/qcon-2018-gimel-paypals-analytic-platform
+[![Watch the video](images/qcon.ai_2018.png)](https://youtu.be/2h0biIli2F4?list=PLPaGQXwz_-RaoHicnGhL5SyOAp3_lUTQ2&t=2)
+
+--------------------------------------------------------------------------------------------------------------------
 
 # Stack & Version Compatibility
 
