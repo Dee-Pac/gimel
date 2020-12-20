@@ -18,9 +18,11 @@ Contents
 | ------------- | ----------- | ------------ | 
 | [What is gimel](#what-is-gimel) | [Edit on GitHub](https://github.com/paypal/gimel) | [APIs & Version Compatibility](#stack-&-version-compatibility) |
 | ------------- | ----------- | ------------ | 
+
 | ------------- | ----------- | ------------ | 
 | [Gimel Overview](#gimel-overview) | [Gimel Catalog Providers](gimel-catalog/catalog-provider.md) | [Questions](#questions) |
 | ------------- | ----------- | ------------ | 
+
 | ------------- | ----------- | ------------ | 
 | [Getting Started](getting-started/build-gimel.md) | [Contribution Guidelines](CONTRIBUTING.md) | [Adding a new connector](gimel-connectors/adding-new-connector.md) |
 | ------------- | ----------- | ------------ | 
