@@ -1,15 +1,14 @@
 # <img src="images/gimel.png" width="60" height="60" /> Gimel Data API
 
 
-Gimel provides unified Data API to access data from any storage like HDFS, GS, Alluxio, Hbase, Aerospike, BigQuery, Druid, Elastic,  Teradata, Oracle, MySQL, SFTP, etc.
-
-Gimel is a Big Data Abstraction framework built on Apache Spark & other open source connectors in the industry.
-
-Gimel provides unified Data API to read & write data to various stores. Alongside, a unified SQL access pattern for all stores alike. 
-The APIs are available in both scala & python (pyspark).
+* Gimel is a Big Data Abstraction framework built on Apache Spark & other open source connectors in the industry.
+* Gimel provides unified Data API to read & write data to various stores. 
+* Alongside, a unified SQL access pattern for all stores alike. 
+* The APIs are available in both scala & python (pyspark).
 
 ```scala
 /* Simple Data API example of read from kafka, transform & write to elastic */
+
 # Initiate API
 val dataset = com.paypal.gimel.DataSet(spark)
 
@@ -21,6 +20,58 @@ val transformed_df: DataFrame = df(...transformations...)
 
 # Write Data | Elastic semantics abstracted for user
 dataset.write("elastic_dataset",df)
+
+# GSQL Reference
+
+// Create Gimel SQL reference
+val gsql: (String) => DataFrame = com.paypal.gimel.scaas.GimelQueryProcessor.executeBatch(_: String, spark)
+
+# your SQL
+val sql = """
+insert into elastic_dataset
+select * from kafka_dataset
+"""
+
+gsql(sql)
+
+```
+
+```python
+
+# import DataFrame and SparkSession
+from pyspark.sql import DataFrame, SparkSession, SQLContext
+
+# fetch reference to the class in JVM
+ScalaDataSet = sc._jvm.com.paypal.gimel.DataSet
+
+# fetch reference to java SparkSession
+jspark = spark._jsparkSession
+
+# initiate dataset
+dataset = ScalaDataSet.apply(jspark)
+
+# Read Data | kafka semantics abstracted for user
+df = dataset.read("kafka_dataset")
+
+# Apply transformations (business logic | abstracted for Gimel)
+transformed_df = df(...transformations...)
+
+# Write Data | Elastic semantics abstracted for user
+dataset.write("elastic_dataset",df)
+
+# fetch reference to GimelQueryProcessor Class in JVM
+gsql = sc._jvm.com.paypal.gimel.scaas.GimelQueryProcessor
+
+# your SQL
+sql = """
+insert into elastic_dataset
+select * from kafka_dataset
+"""
+
+gsql.executeBatch("set es.nodes.wan.only=true", jspark)
+
+# execute GSQL, this can be any sql of type "insert into ... select .. join ... where .."
+gsql.executeBatch(sql, jspark)
 ```
 
 
