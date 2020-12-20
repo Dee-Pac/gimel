@@ -1,5 +1,20 @@
 # <img src="images/gimel.png" width="60" height="60" /> Gimel Data API
 
+Contents
+=================
+
+  * [What is gimel](#what-is-gimel)
+  * [Gimel Overview](#gimel-overview)
+  * [Edit on GitHub](https://github.com/paypal/gimel)
+  * [APIs & Version Compatibility](#stack-&-version-compatibility)
+  * [Getting Started](getting-started/build-gimel.md)
+  * [Gimel Catalog Providers](gimel-catalog/catalog-provider.md)
+  * [Contribution Guidelines](CONTRIBUTING.md)
+  * [Adding a new connector](gimel-connectors/adding-new-connector.md)
+  * [Questions](#questions)
+
+--------------------------------------------------------------------------------------------------------------------
+
 
 * Gimel is a Big Data Abstraction framework built on Apache Spark & other open source connectors in the industry.
 * Gimel provides unified Data API to read & write data to various stores. 
@@ -81,19 +96,6 @@ gsql.executeBatch(sql, jspark)
 --------------------------------------------------------------------------------------------------------------------
 
 
-Contents
-=================
-
-  * [Edit on GitHub](https://github.com/paypal/gimel)
-  * [What is Gimel & Why is it important](#gimel-overview)
-  * [APIs & Version Compatibility](#stack-&-version-compatibility)
-  * [Getting Started](getting-started/build-gimel.md)
-  * [Gimel Catalog Providers](gimel-catalog/catalog-provider.md)
-  * [Contribution Guidelines](CONTRIBUTING.md)
-  * [Adding a new connector](gimel-connectors/adding-new-connector.md)
-  * [Questions](#questions)
-
---------------------------------------------------------------------------------------------------------------------
 
 # Gimel overview
 
