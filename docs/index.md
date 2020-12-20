@@ -30,7 +30,8 @@ Contents
 // Initiate API
 val dataset = com.paypal.gimel.DataSet(spark)
 
-// Read Data | kafka semantics abstracted for user
+// Read Data | kafka semantics abstracted for user. 
+// Refer "Gimel Catalog Providers" that abstracts dataset details
 val df: DataFrame = dataset.read("kafka_dataset")
 
 // Apply transformations (business logic | abstracted for Gimel)
