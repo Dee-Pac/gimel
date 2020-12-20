@@ -87,6 +87,7 @@ insert into elastic_dataset
 select * from kafka_dataset
 """
 
+# Set some props
 gsql.executeBatch("set es.nodes.wan.only=true", jspark)
 
 # execute GSQL, this can be any sql of type "insert into ... select .. join ... where .."
