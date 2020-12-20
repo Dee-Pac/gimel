@@ -4,7 +4,7 @@ Contents
 =================
 
 
-| [What is gimel](#what-is-gimel) | [Gimel Overview](#gimel-overview)  | [APIs & Version Compatibility](#stack-&-version-compatibility) |
+| [What is gimel](#what-is-gimel) | [Gimel Overview](#gimel-overview)  | [APIs & Version Compatibility](#stack-version-&-compatibility) |
 | ------------- | ----------- | ------------ | 
 
 
