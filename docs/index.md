@@ -28,7 +28,7 @@ Contents
 [![Watch the video](images/scale_by_the_bay_2020.png)](https://youtu.be/cy8g2WZbEBI?list=PLPaGQXwz_-RaoHicnGhL5SyOAp3_lUTQ2&t=2)
 
 ## [2020 - Gimel @ Data Orchestration Summit By Alluxio, Online](https://www.alluxio.io/resources/videos/unified-data-access-with-gimel/)
-* [Click here for slideshare](https://www2.slideshare.net/DeepakMC/gimel-scale-bythebay20201113)
+* [Click here for slideshare](https://www.slideshare.net/DeepakMC/data-orchestration-2020-alluxio-gimel-240334331)
 [![Watch the video](images/data_orchestration_summit_2020.png)](https://youtu.be/V5ukRSqcmYY)
 
 ## [2018 - Gimel @ QCon.ai, SF](https://www.infoq.com/qconai2018/)
